@@ -25,7 +25,10 @@
         map.setProjection({
             type: 'globe', // Set projection to globe
         });
-        
+        map.setFilter('countries-label', [
+            'all',
+            ['!=', ['get', 'ADM0_A3'], 'GRL']
+        ]);
         // Add GeoJSON source
         map.addSource('overlay', {
             type: 'geojson',
