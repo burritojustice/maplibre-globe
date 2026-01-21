@@ -21,10 +21,26 @@
         zoom: 2,
         center: [0, 0],
     });
-
     map.on('style.load', () => {
         map.setProjection({
             type: 'globe', // Set projection to globe
+        });
+        
+        // Add GeoJSON source
+        map.addSource('overlay', {
+            type: 'geojson',
+            data: './greenland.geojson'
+        });
+        
+        // Add layer with white fill and no outline
+        map.addLayer({
+            id: 'overlay-layer',
+            type: 'fill',
+            source: 'overlay',
+            paint: {
+                'fill-color': '#D8F2FF',
+                'fill-opacity': 1
+            }
         });
     });
 </script>
