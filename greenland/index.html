@@ -35,6 +35,10 @@
             map.setFilter(layerId, filter);
         });
         
+        map.on('click', 'countries-label', (e) => {
+            console.log('Label properties:', e.features[0].properties);
+        });
+        
         // Add GeoJSON source
         // map.addSource('overlay', {
         //     type: 'geojson',
