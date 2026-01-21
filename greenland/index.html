@@ -25,26 +25,30 @@
         map.setProjection({
             type: 'globe', // Set projection to globe
         });
-        map.setFilter('countries-label', [
-            'all',
-            ['!=', ['get', 'ADM0_A3'], 'GRL']
-        ]);
-        // Add GeoJSON source
-        map.addSource('overlay', {
-            type: 'geojson',
-            data: './greenland.geojson'
+
+        const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline', 'countries-label'];
+        const filter = ['all', ['!=', ['get', 'ADM0_A3'], 'GRL']];
+        
+        layersToFilter.forEach(layerId => {
+            map.setFilter(layerId, filter);
         });
         
-        // Add layer with white fill and no outline
-        map.addLayer({
-            id: 'overlay-layer',
-            type: 'fill',
-            source: 'overlay',
-            paint: {
-                'fill-color': '#D8F2FF',
-                'fill-opacity': 1
-            }
-        }, 'geolines');
+        // Add GeoJSON source
+        // map.addSource('overlay', {
+        //     type: 'geojson',
+        //     data: './greenland.geojson'
+        // });
+        
+        // // Add layer with white fill and no outline
+        // map.addLayer({
+        //     id: 'overlay-layer',
+        //     type: 'fill',
+        //     source: 'overlay',
+        //     paint: {
+        //         'fill-color': '#D8F2FF',
+        //         'fill-opacity': 1
+        //     }
+        // }, 'geolines');
     });
 </script>
 </body>
