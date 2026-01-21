@@ -43,7 +43,8 @@
         });
         
         const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
-        
+        console.log({codeToAbbrev},{abbrevsToHide});
+
         // Filter layers
         const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
         const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
