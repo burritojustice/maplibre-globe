@@ -26,18 +26,40 @@
             type: 'globe', // Set projection to globe
         });
 
-        const countriesToHide = ['GRL', 'CAN', 'MEX']; // Add as many as you need
-        const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline', 'countries-label'];
-        const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
+        const countriesToHide = ['GRL', 'CAN', 'MEX'];
 
+        // Query the countries source to build the mappinG
+        const countryFeatures = map.querySourceFeatures('maplibre', {
+            sourceLayer: 'countries'
+        });
+        
+        const codeToAbbrev = {};
+        countryFeatures.forEach(feature => {
+            const code = feature.properties.ADM0_A3;
+            const abbrev = feature.properties.ABBREV;
+            if (code && abbrev) {
+                codeToAbbrev[code] = abbrev;
+            }
+        });
+        
+        const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
+        
+        // Filter layers
+        const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
+        const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
         
         layersToFilter.forEach(layerId => {
             map.setFilter(layerId, filter);
         });
         
-        map.on('click', 'countries-fill', (e) => {
-            console.log('Label properties:', e.features[0].properties);
-        });
+        map.setFilter('countries-label', [
+            'all',
+            ['!', ['in', ['get', 'ABBREV'], ['literal', abbrevsToHide]]]
+        ]);
+        
+        // map.on('click', 'countries-fill', (e) => {
+        //     console.log('Label properties:', e.features[0].properties);
+        // });
         
         // Add GeoJSON source
         // map.addSource('overlay', {
