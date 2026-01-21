@@ -26,8 +26,10 @@
             type: 'globe', // Set projection to globe
         });
 
+        const countriesToHide = ['GRL', 'CAN', 'MEX']; // Add as many as you need
         const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline', 'countries-label'];
-        const filter = ['all', ['!=', ['get', 'ADM0_A3'], 'GRL']];
+        const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
+
         
         layersToFilter.forEach(layerId => {
             map.setFilter(layerId, filter);
