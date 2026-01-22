@@ -29,10 +29,10 @@
     const countriesToHide = hideParam ? hideParam.split(',').map(c => c.trim()) : ['GRL'];
     const countriesToShow = showParam ? showParam.split(',').map(c => c.trim()) : ['USA', 'CHN', 'RUS', 'BLR', 'PRK', 'HUN'];
     
-    // Determine if we should auto-apply filters (only one parameter)
+    // Determine if we have URL parameters
+    const hasUrlParams = hideParam || showParam;
     const hasOnlyHide = hideParam && !showParam;
     const hasOnlyShow = showParam && !hideParam;
-    const hasBothParams = hideParam && showParam;
     
     const map = new maplibregl.Map({
         container: 'map',
@@ -56,17 +56,64 @@
         let codeToAbbrev = {};
         let hideActive = false;
         let showActive = false;
+        let selectedCountries = new Set();
+        
+        // Add a layer for selected country outlines
+        map.addSource('selected-countries', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: []
+            }
+        });
+        
+        map.addLayer({
+            id: 'selected-countries-outline',
+            type: 'line',
+            source: 'selected-countries',
+            paint: {
+                'line-color': '#ff0000',
+                'line-width': {
+                    'stops': [
+                        [1, 1],
+                        [6, 2],
+                        [14, 6],
+                        [22, 12]
+                    ]
+                }
+            }
+        });
+        
+        // Function to update selected countries outline
+        function updateSelectedOutline() {
+            if (selectedCountries.size === 0) {
+                map.getSource('selected-countries').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+                return;
+            }
+            
+            const features = map.querySourceFeatures('maplibre', {
+                sourceLayer: 'countries'
+            }).filter(feature => selectedCountries.has(feature.properties.ADM0_A3));
+            
+            map.getSource('selected-countries').setData({
+                type: 'FeatureCollection',
+                features: features
+            });
+        }
         
         // Function to hide specific countries
-        function hideCountries() {
+        function hideCountries(countryList) {
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
-            const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
+            const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countryList]]]];
             
             layersToFilter.forEach(layerId => {
                 map.setFilter(layerId, filter);
             });
             
-            const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
+            const abbrevsToHide = countryList.map(code => codeToAbbrev[code]).filter(Boolean);
             
             map.setFilter('countries-label', [
                 'all',
@@ -75,15 +122,15 @@
         }
         
         // Function to show only specific countries
-        function showOnlyCountries() {
+        function showOnlyCountries(countryList) {
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
-            const filter = ['all', ['in', ['get', 'ADM0_A3'], ['literal', countriesToShow]]];
+            const filter = ['all', ['in', ['get', 'ADM0_A3'], ['literal', countryList]]];
             
             layersToFilter.forEach(layerId => {
                 map.setFilter(layerId, filter);
             });
             
-            const abbrevsToShow = countriesToShow.map(code => codeToAbbrev[code]).filter(Boolean);
+            const abbrevsToShow = countryList.map(code => codeToAbbrev[code]).filter(Boolean);
             
             map.setFilter('countries-label', [
                 'all',
@@ -119,19 +166,49 @@
             });
             
             console.log('Code to abbrev mapping:', codeToAbbrev);
-            console.log('Countries to hide:', countriesToHide);
-            console.log('Countries to show:', countriesToShow);
             
             // Auto-apply if only one parameter
             if (hasOnlyHide) {
-                hideCountries();
+                selectedCountries = new Set(countriesToHide);
+                hideCountries(countriesToHide);
                 hideActive = true;
                 updateButtonStyles();
             } else if (hasOnlyShow) {
-                showOnlyCountries();
+                selectedCountries = new Set(countriesToShow);
+                showOnlyCountries(countriesToShow);
                 showActive = true;
                 updateButtonStyles();
+            } else if (hasUrlParams) {
+                // Both parameters - populate selection but don't apply
+                selectedCountries = new Set([...countriesToHide, ...countriesToShow]);
             }
+        });
+        
+        // Handle country clicks for selection (only if no URL params or filters not active)
+        map.on('click', 'countries-fill', (e) => {
+            if (hideActive || showActive) return; // Don't allow selection when filters are active
+            
+            const countryCode = e.features[0].properties.ADM0_A3;
+            
+            if (selectedCountries.has(countryCode)) {
+                selectedCountries.delete(countryCode);
+            } else {
+                selectedCountries.add(countryCode);
+            }
+            
+            updateSelectedOutline();
+            console.log('Selected countries:', Array.from(selectedCountries));
+        });
+        
+        // Change cursor on hover
+        map.on('mouseenter', 'countries-fill', () => {
+            if (!hideActive && !showActive) {
+                map.getCanvas().style.cursor = 'pointer';
+            }
+        });
+        
+        map.on('mouseleave', 'countries-fill', () => {
+            map.getCanvas().style.cursor = '';
         });
         
         // Create dialog
@@ -151,7 +228,7 @@
         `;
         dialog.innerHTML = `
             <div style="margin-bottom: 16px; font-size: 18px; font-weight: 600; color: white;">
-                Are you Donald Trump?
+                Hide and Seek
             </div>
             <div style="display: flex; gap: 12px;">
                 <button id="hideBtn" style="
@@ -175,7 +252,7 @@
                     padding: 12px 24px;
                     border: none;
                     border-radius: 8px;
-                    background: white;
+                    background: rgba(255,255,255,0.5);
                     color: #667eea;
                     font-size: 15px;
                     font-weight: 600;
@@ -186,12 +263,29 @@
                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
                     Show
                 </button>
+                <button id="clearBtn" style="
+                    flex: 1;
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 8px;
+                    background: rgba(255,255,255,0.3);
+                    color: white;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
+                    Clear
+                </button>
             </div>
         `;
         document.body.appendChild(dialog);
         
         const hideBtn = document.getElementById('hideBtn');
         const showBtn = document.getElementById('showBtn');
+        const clearBtn = document.getElementById('clearBtn');
         
         function updateButtonStyles() {
             if (hideActive) {
@@ -213,31 +307,55 @@
         
         // Handle Hide button clicks
         hideBtn.addEventListener('click', () => {
+            if (selectedCountries.size === 0) return;
+            
             if (hideActive) {
-                // Deactivate - show all countries
+                // Deactivate - show all countries with selection outlined
                 showAllCountries();
                 hideActive = false;
+                updateSelectedOutline();
             } else {
-                // Activate - hide countries
-                hideCountries();
+                // Activate - hide selected countries and remove outline
+                hideCountries(Array.from(selectedCountries));
                 hideActive = true;
-                showActive = false; // Deactivate show if it was active
+                showActive = false;
+                map.getSource('selected-countries').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
             }
             updateButtonStyles();
         });
         
         // Handle Show button clicks
         showBtn.addEventListener('click', () => {
+            if (selectedCountries.size === 0) return;
+            
             if (showActive) {
-                // Deactivate - show all countries
+                // Deactivate - show all countries with selection outlined
                 showAllCountries();
                 showActive = false;
+                updateSelectedOutline();
             } else {
-                // Activate - show only specific countries
-                showOnlyCountries();
+                // Activate - show only selected countries and remove outline
+                showOnlyCountries(Array.from(selectedCountries));
                 showActive = true;
-                hideActive = false; // Deactivate hide if it was active
+                hideActive = false;
+                map.getSource('selected-countries').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
             }
+            updateButtonStyles();
+        });
+        
+        // Handle Clear button clicks
+        clearBtn.addEventListener('click', () => {
+            selectedCountries.clear();
+            hideActive = false;
+            showActive = false;
+            showAllCountries();
+            updateSelectedOutline();
             updateButtonStyles();
         });
     });
