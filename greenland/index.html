@@ -28,10 +28,10 @@
         });
         
         const countriesToHide = ['GRL', 'CAN', 'MEX'];
+        let codeToAbbrev = {};
         
-        // Function to apply filters
+        // Function to apply filters (hide countries)
         function applyCountryFilters() {
-            // Filter layers
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
             const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
             
@@ -39,34 +39,43 @@
                 map.setFilter(layerId, filter);
             });
             
-            // Wait for map to be idle (tiles loaded)
-            map.once('idle', () => {
-                // Query the countries source to build the mapping
-                const countryFeatures = map.querySourceFeatures('maplibre', {
-                    sourceLayer: 'countries'
-                });
-                
-                console.log('Found features:', countryFeatures.length);
-                
-                const codeToAbbrev = {};
-                countryFeatures.forEach(feature => {
-                    const code = feature.properties.ADM0_A3;
-                    const abbrev = feature.properties.ABBREV;
-                    if (code && abbrev) {
-                        codeToAbbrev[code] = abbrev;
-                    }
-                });
-                
-                console.log('Code to abbrev mapping:', codeToAbbrev);
-                
-                const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
-                
-                map.setFilter('countries-label', [
-                    'all',
-                    ['!', ['in', ['get', 'ABBREV'], ['literal', abbrevsToHide]]]
-                ]);
-            });
+            const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
+            
+            map.setFilter('countries-label', [
+                'all',
+                ['!', ['in', ['get', 'ABBREV'], ['literal', abbrevsToHide]]]
+            ]);
         }
+        
+        // Function to remove filters (show all countries)
+        function removeCountryFilters() {
+            const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
+            
+            layersToFilter.forEach(layerId => {
+                map.setFilter(layerId, null);
+            });
+            
+            map.setFilter('countries-label', null);
+        }
+        
+        // Wait for map to be idle and build the mapping
+        map.once('idle', () => {
+            const countryFeatures = map.querySourceFeatures('maplibre', {
+                sourceLayer: 'countries'
+            });
+            
+            console.log('Found features:', countryFeatures.length);
+            
+            countryFeatures.forEach(feature => {
+                const code = feature.properties.ADM0_A3;
+                const abbrev = feature.properties.ABBREV;
+                if (code && abbrev) {
+                    codeToAbbrev[code] = abbrev;
+                }
+            });
+            
+            console.log('Code to abbrev mapping:', codeToAbbrev);
+        });
         
         // Create dialog
         const dialog = document.createElement('div');
@@ -82,64 +91,14 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             z-index: 1000;
             backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
         `;
         dialog.innerHTML = `
             <div style="margin-bottom: 16px; font-size: 18px; font-weight: 600; color: white;">
-                Are you X?
+                Are you Donald Trump?
             </div>
             <div style="display: flex; gap: 12px;">
-                <button data-value="yes" style="
+                <button id="yesBtn" data-value="yes" style="
                     flex: 1;
                     padding: 12px 24px;
                     border: none;
                     border-radius: 8px;
-                    background: white;
-                    color: #667eea;
-                    font-size: 15px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" 
-                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
-                    Yes
-                </button>
-                <button data-value="no" style="
-                    flex: 1;
-                    padding: 12px 24px;
-                    border: 2px solid white;
-                    border-radius: 8px;
-                    background: transparent;
-                    color: white;
-                    font-size: 15px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                " onmouseover="this.style.background='rgba(255,255,255,0.1)';" 
-                   onmouseout="this.style.background='transparent';">
-                    No
-                </button>
-            </div>
-        `;
-        document.body.appendChild(dialog);
-        
-        // Handle button clicks
-        dialog.querySelectorAll('button').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const value = e.target.getAttribute('data-value');
-                if (value === 'yes') {
-                    applyCountryFilters();
-                }
-                // Fade out and hide dialog
-                dialog.style.opacity = '0';
-                dialog.style.transform = 'translateX(-50%) translateY(20px)';
-                // setTimeout(() => {
-                //     dialog.style.display = 'none';
-                // }, 300);
-            });
-        });
-    });
-</script>
-</body>
-</html>
