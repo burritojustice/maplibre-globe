@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <title>Greenland Defense Plan</title>
-    <meta property="og:description" content="Greenland Defense Plan." />
-    <meta property="og:title" content="Greenland Defense Plan" />
-    <meta property="og:description" content="An unbeatable defense for Greenland" />
+    <meta property="og:description" content="Show and hide countries on a globe" />
+    <meta property="og:title" content="Hide and Seek" />
+    <meta property="og:description" content="Show and hide gropus of countries" />
     <meta property="og:image" content="https://burritojustice.github.io/maplibre-globe/greenland/preview.jpg" />
-    <meta property="og:url" content="https://burritojustice.github.io/maplibre-globe/greenland/" />
-    <meta property="og:type" content="https://burritojustice.github.io/maplibre-globe/greenland/" />
+    <meta property="og:url" content="https://burritojustice.github.io/maplibre-globe/show-hide/" />
+    <meta property="og:type" content="https://burritojustice.github.io/maplibre-globe/show-hide/" />
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css' />
@@ -154,6 +154,31 @@
             });
             
             map.setFilter('countries-label', null);
+        }
+
+        // Function to update URL with current selection
+        function updateURL() {
+            const url = new URL(window.location);
+            
+            if (selectedCountries.size === 0) {
+                url.searchParams.delete('hide');
+                url.searchParams.delete('show');
+            } else {
+                const countryList = Array.from(selectedCountries).join(',');
+                
+                if (hideActive) {
+                    url.searchParams.set('hide', countryList);
+                    url.searchParams.delete('show');
+                } else if (showActive) {
+                    url.searchParams.set('show', countryList);
+                    url.searchParams.delete('hide');
+                } else {
+                    // When neither is active but countries are selected, don't update URL
+                    // (or you could choose to keep the last active state)
+                }
+            }
+            
+            window.history.pushState({}, '', url);
         }
         
         // Wait for map to be idle and build the mapping
@@ -332,6 +357,7 @@
                 });
             }
             updateButtonStyles();
+            updateURL();
         });
         
         // Handle Show button clicks
@@ -354,6 +380,7 @@
                 });
             }
             updateButtonStyles();
+            updateURL();
         });
         
         // Handle Clear button clicks
@@ -364,6 +391,7 @@
             showAllCountries();
             updateSelectedOutline();
             updateButtonStyles();
+            updateURL();
         });
     });
 </script>
