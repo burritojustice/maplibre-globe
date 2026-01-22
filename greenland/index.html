@@ -26,9 +26,15 @@
         map.setProjection({
             type: 'globe',
         });
+
+        // Override to always show full country names
+        map.setLayoutProperty('countries-label', 'text-field', ['get', 'NAME']);
         
+        // Only show labels at zoom 4 and above
+        map.setLayerZoomRange('countries-label', 4, 24);
+            
         const countriesToHide = ['GRL'];
-        const countriesToShow = ['USA', 'CHN', 'RUS','PRK'];
+        const countriesToShow = ['USA', 'CHN', 'RUS','PRK','SAU'];
         let codeToAbbrev = {};
         let isFirstClick = true;
         
@@ -113,7 +119,7 @@
         `;
         dialog.innerHTML = `
             <div style="margin-bottom: 16px; font-size: 18px; font-weight: 600; color: white;">
-                Are you X?
+                Are you Donald Trump?
             </div>
             <div style="display: flex; gap: 12px;">
                 <button id="yesBtn" data-value="yes" style="
