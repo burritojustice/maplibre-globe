@@ -21,55 +21,92 @@
         zoom: 1.5,
         center: [-62.1, 61.7],
     });
+    
     map.on('style.load', () => {
         map.setProjection({
-            type: 'globe', // Set projection to globe
+            type: 'globe',
         });
-
+        
         const countriesToHide = ['GRL', 'CAN', 'MEX'];
+        
+        // Function to apply filters
+        function applyCountryFilters() {
+            // Filter layers
+            const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
+            const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
             
-        // Filter layers
-        const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
-        const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
-        
-        layersToFilter.forEach(layerId => {
-            map.setFilter(layerId, filter);
-        });
-        
-        // Wait for map to be idle (tiles loaded)
-        map.once('idle', () => {
-            // Query the countries source to build the mapping
-            const countryFeatures = map.querySourceFeatures('maplibre', {
-                sourceLayer: 'countries'
+            layersToFilter.forEach(layerId => {
+                map.setFilter(layerId, filter);
             });
             
-            console.log('Found features:', countryFeatures.length);
-            
-            const codeToAbbrev = {};
-            countryFeatures.forEach(feature => {
-                const code = feature.properties.ADM0_A3;
-                const abbrev = feature.properties.ABBREV;
-                if (code && abbrev) {
-                    codeToAbbrev[code] = abbrev;
+            // Wait for map to be idle (tiles loaded)
+            map.once('idle', () => {
+                // Query the countries source to build the mapping
+                const countryFeatures = map.querySourceFeatures('maplibre', {
+                    sourceLayer: 'countries'
+                });
+                
+                console.log('Found features:', countryFeatures.length);
+                
+                const codeToAbbrev = {};
+                countryFeatures.forEach(feature => {
+                    const code = feature.properties.ADM0_A3;
+                    const abbrev = feature.properties.ABBREV;
+                    if (code && abbrev) {
+                        codeToAbbrev[code] = abbrev;
+                    }
+                });
+                
+                console.log('Code to abbrev mapping:', codeToAbbrev);
+                
+                const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
+                
+                map.setFilter('countries-label', [
+                    'all',
+                    ['!', ['in', ['get', 'ABBREV'], ['literal', abbrevsToHide]]]
+                ]);
+            });
+        }
+        
+        // Create dialog
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+        `;
+        dialog.innerHTML = `
+            <div style="margin-bottom: 10px; font-weight: bold;">Are you Donald Trump?</div>
+            <label style="margin-right: 15px; cursor: pointer;">
+                <input type="radio" name="response" value="yes" style="margin-right: 5px;">
+                Yes
+            </label>
+            <label style="cursor: pointer;">
+                <input type="radio" name="response" value="no" style="margin-right: 5px;">
+                No
+            </label>
+        `;
+        document.body.appendChild(dialog);
+        
+        // Handle radio button selection
+        dialog.querySelectorAll('input[name="response"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                if (e.target.value === 'yes') {
+                    applyCountryFilters();
                 }
+                // Hide dialog after selection
+                // setTimeout(() => {
+                //     dialog.style.display = 'none';
+                // }, 300);
             });
-            
-            console.log('Code to abbrev mapping:', codeToAbbrev);
-            
-            const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
-
-            
-            map.setFilter('countries-label', [
-                'all',
-                ['!', ['in', ['get', 'ABBREV'], ['literal', abbrevsToHide]]]
-            ]);
         });
-        
-        // map.on('click', 'countries-fill', (e) => {
-        //     console.log('Label properties:', e.features[0].properties);
-        // });
-        
-
     });
 </script>
 </body>
