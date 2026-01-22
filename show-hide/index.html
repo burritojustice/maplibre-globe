@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Hide and Seek</title>
-    <!-- <meta property="og:description" content="Greenland Defense Plan." />
+    <title>Greenland Defense Plan</title>
+    <meta property="og:description" content="Greenland Defense Plan." />
     <meta property="og:title" content="Greenland Defense Plan" />
     <meta property="og:description" content="An unbeatable defense for Greenland" />
     <meta property="og:image" content="https://burritojustice.github.io/maplibre-globe/greenland/preview.jpg" />
     <meta property="og:url" content="https://burritojustice.github.io/maplibre-globe/greenland/" />
-    <meta property="og:type" content="https://burritojustice.github.io/maplibre-globe/greenland/" /> -->
+    <meta property="og:type" content="https://burritojustice.github.io/maplibre-globe/greenland/" />
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css' />
@@ -29,6 +29,11 @@
     const countriesToHide = hideParam ? hideParam.split(',').map(c => c.trim()) : ['GRL'];
     const countriesToShow = showParam ? showParam.split(',').map(c => c.trim()) : ['USA', 'CHN', 'RUS', 'BLR', 'PRK', 'HUN'];
     
+    // Determine if we should auto-apply filters (only one parameter)
+    const hasOnlyHide = hideParam && !showParam;
+    const hasOnlyShow = showParam && !hideParam;
+    const hasBothParams = hideParam && showParam;
+    
     const map = new maplibregl.Map({
         container: 'map',
         style: 'https://demotiles.maplibre.org/style.json',
@@ -49,7 +54,8 @@
         map.setLayerZoomRange('countries-label', 3, 24);
         
         let codeToAbbrev = {};
-        let isFirstClick = true;
+        let hideActive = false;
+        let showActive = false;
         
         // Function to hide specific countries
         function hideCountries() {
@@ -86,7 +92,7 @@
         }
         
         // Function to remove filters (show all countries)
-        function removeCountryFilters() {
+        function showAllCountries() {
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
             
             layersToFilter.forEach(layerId => {
@@ -115,6 +121,17 @@
             console.log('Code to abbrev mapping:', codeToAbbrev);
             console.log('Countries to hide:', countriesToHide);
             console.log('Countries to show:', countriesToShow);
+            
+            // Auto-apply if only one parameter
+            if (hasOnlyHide) {
+                hideCountries();
+                hideActive = true;
+                updateButtonStyles();
+            } else if (hasOnlyShow) {
+                showOnlyCountries();
+                showActive = true;
+                updateButtonStyles();
+            }
         });
         
         // Create dialog
@@ -134,10 +151,10 @@
         `;
         dialog.innerHTML = `
             <div style="margin-bottom: 16px; font-size: 18px; font-weight: 600; color: white;">
-                Hide and Seek
+                Are you Donald Trump?
             </div>
             <div style="display: flex; gap: 12px;">
-                <button id="yesBtn" data-value="yes" style="
+                <button id="hideBtn" style="
                     flex: 1;
                     padding: 12px 24px;
                     border: none;
@@ -151,9 +168,9 @@
                     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" 
                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
-                    Yes
+                    Hide
                 </button>
-                <button id="noBtn" data-value="no" style="
+                <button id="showBtn" style="
                     flex: 1;
                     padding: 12px 24px;
                     border: none;
@@ -167,41 +184,61 @@
                     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" 
                    onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
-                    No
+                    Show
                 </button>
             </div>
         `;
         document.body.appendChild(dialog);
         
-        const yesBtn = document.getElementById('yesBtn');
-        const noBtn = document.getElementById('noBtn');
+        const hideBtn = document.getElementById('hideBtn');
+        const showBtn = document.getElementById('showBtn');
         
-        // Handle button clicks
-        yesBtn.addEventListener('click', () => {
-            if (isFirstClick) {
-                hideCountries();
-                isFirstClick = false;
-                // First click - white
-                yesBtn.style.background = 'white';
-                yesBtn.style.color = '#667eea';
+        function updateButtonStyles() {
+            if (hideActive) {
+                hideBtn.style.background = 'white';
+                hideBtn.style.color = '#667eea';
             } else {
-                showOnlyCountries();
-                // Second click - grey
-                yesBtn.style.background = '#9ca3af';
-                yesBtn.style.color = 'white';
+                hideBtn.style.background = 'rgba(255,255,255,0.5)';
+                hideBtn.style.color = '#667eea';
             }
-            noBtn.style.background = 'rgba(255,255,255,0.5)';
-            noBtn.style.color = '#667eea';
+            
+            if (showActive) {
+                showBtn.style.background = 'white';
+                showBtn.style.color = '#667eea';
+            } else {
+                showBtn.style.background = 'rgba(255,255,255,0.5)';
+                showBtn.style.color = '#667eea';
+            }
+        }
+        
+        // Handle Hide button clicks
+        hideBtn.addEventListener('click', () => {
+            if (hideActive) {
+                // Deactivate - show all countries
+                showAllCountries();
+                hideActive = false;
+            } else {
+                // Activate - hide countries
+                hideCountries();
+                hideActive = true;
+                showActive = false; // Deactivate show if it was active
+            }
+            updateButtonStyles();
         });
         
-        noBtn.addEventListener('click', () => {
-            removeCountryFilters();
-            isFirstClick = true; // Reset to first click state
-            // No button becomes white
-            noBtn.style.background = 'white';
-            noBtn.style.color = '#667eea';
-            yesBtn.style.background = 'rgba(255,255,255,0.5)';
-            yesBtn.style.color = '#667eea';
+        // Handle Show button clicks
+        showBtn.addEventListener('click', () => {
+            if (showActive) {
+                // Deactivate - show all countries
+                showAllCountries();
+                showActive = false;
+            } else {
+                // Activate - show only specific countries
+                showOnlyCountries();
+                showActive = true;
+                hideActive = false; // Deactivate hide if it was active
+            }
+            updateButtonStyles();
         });
     });
 </script>
