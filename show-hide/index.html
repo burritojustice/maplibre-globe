@@ -95,12 +95,19 @@
             }
             
             const features = map.querySourceFeatures('maplibre', {
-                sourceLayer: 'countries'
-            }).filter(feature => selectedCountries.has(feature.properties.ADM0_A3));
+                sourceLayer: 'countries',
+                filter: ['in', ['get', 'ADM0_A3'], ['literal', Array.from(selectedCountries)]]
+            });
+            
+            console.log('Selected features for outline:', features.length);
             
             map.getSource('selected-countries').setData({
                 type: 'FeatureCollection',
-                features: features
+                features: features.map(f => ({
+                    type: 'Feature',
+                    geometry: f.geometry,
+                    properties: f.properties
+                }))
             });
         }
         
