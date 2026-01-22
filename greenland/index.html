@@ -28,11 +28,11 @@
 
         const countriesToHide = ['GRL', 'CAN', 'MEX'];
 
-        // Query the countries source to build the mappinG
+        // Query the countries source to build the mapping
         const countryFeatures = map.querySourceFeatures('maplibre', {
             sourceLayer: 'countries'
         });
-        
+        console.log({countryFeatures});
         const codeToAbbrev = {};
         countryFeatures.forEach(feature => {
             const code = feature.properties.ADM0_A3;
@@ -43,6 +43,7 @@
         });
         
         const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
+        
         console.log({codeToAbbrev},{abbrevsToHide});
 
         // Filter layers
@@ -62,22 +63,7 @@
         //     console.log('Label properties:', e.features[0].properties);
         // });
         
-        // Add GeoJSON source
-        // map.addSource('overlay', {
-        //     type: 'geojson',
-        //     data: './greenland.geojson'
-        // });
-        
-        // // Add layer with white fill and no outline
-        // map.addLayer({
-        //     id: 'overlay-layer',
-        //     type: 'fill',
-        //     source: 'overlay',
-        //     paint: {
-        //         'fill-color': '#D8F2FF',
-        //         'fill-opacity': 1
-        //     }
-        // }, 'geolines');
+
     });
 </script>
 </body>
