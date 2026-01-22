@@ -27,7 +27,15 @@
         });
 
         const countriesToHide = ['GRL', 'CAN', 'MEX'];
-
+            
+        // Filter layers
+        const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
+        const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
+        
+        layersToFilter.forEach(layerId => {
+            map.setFilter(layerId, filter);
+        });
+        
         // Wait for map to be idle (tiles loaded)
         map.once('idle', () => {
             // Query the countries source to build the mapping
@@ -49,14 +57,7 @@
             console.log('Code to abbrev mapping:', codeToAbbrev);
             
             const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
-            
-            // Filter layers
-            const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
-            const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
-            
-            layersToFilter.forEach(layerId => {
-                map.setFilter(layerId, filter);
-            });
+
             
             map.setFilter('countries-label', [
                 'all',
