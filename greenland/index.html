@@ -102,3 +102,56 @@
                     padding: 12px 24px;
                     border: none;
                     border-radius: 8px;
+                    background: white;
+                    color: #667eea;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
+                    Yes
+                </button>
+                <button id="noBtn" data-value="no" style="
+                    flex: 1;
+                    padding: 12px 24px;
+                    border: 2px solid white;
+                    border-radius: 8px;
+                    background: transparent;
+                    color: white;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                " onmouseover="this.style.background='rgba(255,255,255,0.1)';" 
+                   onmouseout="this.style.background='transparent';">
+                    No
+                </button>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+        
+        const yesBtn = document.getElementById('yesBtn');
+        const noBtn = document.getElementById('noBtn');
+        
+        // Handle button clicks
+        yesBtn.addEventListener('click', () => {
+            applyCountryFilters();
+            // Visual feedback for selected state
+            yesBtn.style.background = 'white';
+            yesBtn.style.color = '#667eea';
+            noBtn.style.background = 'transparent';
+        });
+        
+        noBtn.addEventListener('click', () => {
+            removeCountryFilters();
+            // Visual feedback for selected state
+            noBtn.style.background = 'rgba(255,255,255,0.2)';
+            yesBtn.style.background = 'rgba(255,255,255,0.5)';
+            yesBtn.style.color = '#667eea';
+        });
+    });
+</script>
+</body>
+</html>
