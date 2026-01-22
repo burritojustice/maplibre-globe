@@ -26,15 +26,15 @@
         map.setProjection({
             type: 'globe',
         });
-
+        
         // Override to always show full country names
         map.setLayoutProperty('countries-label', 'text-field', ['get', 'NAME']);
         
         // Only show labels at zoom 4 and above
-        map.setLayerZoomRange('countries-label', 2, 24);
-            
+        map.setLayerZoomRange('countries-label', 4, 24);
+        
         const countriesToHide = ['GRL'];
-        const countriesToShow = ['USA', 'CHN', 'RUS','PRK','SAU','BLR','HUN'];
+        const countriesToShow = ['USA', 'CHN', 'RUS', 'BLR', 'PRK'];
         let codeToAbbrev = {};
         let isFirstClick = true;
         
@@ -127,7 +127,7 @@
                     padding: 12px 24px;
                     border: none;
                     border-radius: 8px;
-                    background: white;
+                    background: rgba(255,255,255,0.5);
                     color: #667eea;
                     font-size: 15px;
                     font-weight: 600;
@@ -141,16 +141,17 @@
                 <button id="noBtn" data-value="no" style="
                     flex: 1;
                     padding: 12px 24px;
-                    border: 2px solid white;
+                    border: none;
                     border-radius: 8px;
-                    background: transparent;
-                    color: white;
+                    background: white;
+                    color: #667eea;
                     font-size: 15px;
                     font-weight: 600;
                     cursor: pointer;
                     transition: all 0.2s ease;
-                " onmouseover="this.style.background='rgba(255,255,255,0.1)';" 
-                   onmouseout="this.style.background='transparent';">
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
                     No
                 </button>
             </div>
@@ -165,23 +166,25 @@
             if (isFirstClick) {
                 hideCountries();
                 isFirstClick = false;
-                // First click style
+                // First click - white
                 yesBtn.style.background = 'white';
                 yesBtn.style.color = '#667eea';
             } else {
                 showOnlyCountries();
-                // Second click style - darker/different color
-                yesBtn.style.background = '#ffd700';
-                yesBtn.style.color = '#764ba2';
+                // Second click - grey
+                yesBtn.style.background = '#9ca3af';
+                yesBtn.style.color = 'white';
             }
-            noBtn.style.background = 'transparent';
+            noBtn.style.background = 'rgba(255,255,255,0.5)';
+            noBtn.style.color = '#667eea';
         });
         
         noBtn.addEventListener('click', () => {
             removeCountryFilters();
             isFirstClick = true; // Reset to first click state
-            // Visual feedback for selected state
-            noBtn.style.background = 'rgba(255,255,255,0.2)';
+            // No button becomes white
+            noBtn.style.background = 'white';
+            noBtn.style.color = '#667eea';
             yesBtn.style.background = 'rgba(255,255,255,0.5)';
             yesBtn.style.color = '#667eea';
         });
