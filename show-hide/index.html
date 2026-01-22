@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Hide and Seek</title>
+    <!-- <meta property="og:description" content="Greenland Defense Plan." />
+    <meta property="og:title" content="Greenland Defense Plan" />
+    <meta property="og:description" content="An unbeatable defense for Greenland" />
+    <meta property="og:image" content="https://burritojustice.github.io/maplibre-globe/greenland/preview.jpg" />
+    <meta property="og:url" content="https://burritojustice.github.io/maplibre-globe/greenland/" />
+    <meta property="og:type" content="https://burritojustice.github.io/maplibre-globe/greenland/" /> -->
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css' />
+    <script src='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.js'></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        html, body, #map { height: 100%; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script>
+    // Parse URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const hideParam = urlParams.get('hide');
+    const showParam = urlParams.get('show');
+    
+    // Set default values or use URL parameters
+    const countriesToHide = hideParam ? hideParam.split(',').map(c => c.trim()) : ['GRL'];
+    const countriesToShow = showParam ? showParam.split(',').map(c => c.trim()) : ['USA', 'CHN', 'RUS', 'BLR', 'PRK', 'HUN'];
+    
+    const map = new maplibregl.Map({
+        container: 'map',
+        style: 'https://demotiles.maplibre.org/style.json',
+        zoom: 1.5,
+        center: [-62.1, 61.7],
+        maxZoom: 3
+    });
+    
+    map.on('style.load', () => {
+        map.setProjection({
+            type: 'globe',
+        });
+        
+        // Override to always show full country names
+        map.setLayoutProperty('countries-label', 'text-field', ['get', 'NAME']);
+        
+        // Only show labels at zoom 4 and above
+        map.setLayerZoomRange('countries-label', 3, 24);
+        
+        let codeToAbbrev = {};
+        let isFirstClick = true;
+        
+        // Function to hide specific countries
+        function hideCountries() {
+            const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
+            const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
+            
+            layersToFilter.forEach(layerId => {
+                map.setFilter(layerId, filter);
+            });
+            
+            const abbrevsToHide = countriesToHide.map(code => codeToAbbrev[code]).filter(Boolean);
+            
+            map.setFilter('countries-label', [
+                'all',
+                ['!', ['in', ['get', 'ABBREV'], ['literal', abbrevsToHide]]]
+            ]);
+        }
+        
+        // Function to show only specific countries
+        function showOnlyCountries() {
+            const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
+            const filter = ['all', ['in', ['get', 'ADM0_A3'], ['literal', countriesToShow]]];
+            
+            layersToFilter.forEach(layerId => {
+                map.setFilter(layerId, filter);
+            });
+            
+            const abbrevsToShow = countriesToShow.map(code => codeToAbbrev[code]).filter(Boolean);
+            
+            map.setFilter('countries-label', [
+                'all',
+                ['in', ['get', 'ABBREV'], ['literal', abbrevsToShow]]
+            ]);
+        }
+        
+        // Function to remove filters (show all countries)
+        function removeCountryFilters() {
+            const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
+            
+            layersToFilter.forEach(layerId => {
+                map.setFilter(layerId, null);
+            });
+            
+            map.setFilter('countries-label', null);
+        }
+        
+        // Wait for map to be idle and build the mapping
+        map.once('idle', () => {
+            const countryFeatures = map.querySourceFeatures('maplibre', {
+                sourceLayer: 'countries'
+            });
+            
+            console.log('Found features:', countryFeatures.length);
+            
+            countryFeatures.forEach(feature => {
+                const code = feature.properties.ADM0_A3;
+                const abbrev = feature.properties.ABBREV;
+                if (code && abbrev) {
+                    codeToAbbrev[code] = abbrev;
+                }
+            });
+            
+            console.log('Code to abbrev mapping:', codeToAbbrev);
+            console.log('Countries to hide:', countriesToHide);
+            console.log('Countries to show:', countriesToShow);
+        });
+        
+        // Create dialog
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 24px 32px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        `;
+        dialog.innerHTML = `
+            <div style="margin-bottom: 16px; font-size: 18px; font-weight: 600; color: white;">
+                Hide and Seek
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button id="yesBtn" data-value="yes" style="
+                    flex: 1;
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 8px;
+                    background: rgba(255,255,255,0.5);
+                    color: #667eea;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
+                    Yes
+                </button>
+                <button id="noBtn" data-value="no" style="
+                    flex: 1;
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 8px;
+                    background: white;
+                    color: #667eea;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)';" 
+                   onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)';">
+                    No
+                </button>
+            </div>
+        `;
+        document.body.appendChild(dialog);
+        
+        const yesBtn = document.getElementById('yesBtn');
+        const noBtn = document.getElementById('noBtn');
+        
+        // Handle button clicks
+        yesBtn.addEventListener('click', () => {
+            if (isFirstClick) {
+                hideCountries();
+                isFirstClick = false;
+                // First click - white
+                yesBtn.style.background = 'white';
+                yesBtn.style.color = '#667eea';
+            } else {
+                showOnlyCountries();
+                // Second click - grey
+                yesBtn.style.background = '#9ca3af';
+                yesBtn.style.color = 'white';
+            }
+            noBtn.style.background = 'rgba(255,255,255,0.5)';
+            noBtn.style.color = '#667eea';
+        });
+        
+        noBtn.addEventListener('click', () => {
+            removeCountryFilters();
+            isFirstClick = true; // Reset to first click state
+            // No button becomes white
+            noBtn.style.background = 'white';
+            noBtn.style.color = '#667eea';
+            yesBtn.style.background = 'rgba(255,255,255,0.5)';
+            yesBtn.style.color = '#667eea';
+        });
+    });
+</script>
+</body>
+</html>
