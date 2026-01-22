@@ -165,13 +165,17 @@
             if (isFirstClick) {
                 hideCountries();
                 isFirstClick = false;
+                yesBtn.style.background = 'white';
+                yesBtn.style.color = '#667eea';
+                yesBtn.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.3)';
             } else {
                 showOnlyCountries();
+                yesBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                yesBtn.style.color = 'white';
+                yesBtn.style.boxShadow = '0 0 0 3px rgba(16, 185, 129, 0.3)';
             }
-            // Visual feedback for selected state
-            yesBtn.style.background = 'white';
-            yesBtn.style.color = '#667eea';
             noBtn.style.background = 'transparent';
+            noBtn.style.boxShadow = 'none';
         });
         
         noBtn.addEventListener('click', () => {
