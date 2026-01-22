@@ -27,13 +27,13 @@
             type: 'globe',
         });
         
-        // const countriesToHide = ['GRL', 'CAN', 'MEX'];
         const countriesToHide = ['GRL'];
-
+        const countriesToShow = ['USA', 'CHN', 'RUS','PRK'];
         let codeToAbbrev = {};
+        let isFirstClick = true;
         
-        // Function to apply filters (hide countries)
-        function applyCountryFilters() {
+        // Function to hide specific countries
+        function hideCountries() {
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
             const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countriesToHide]]]];
             
@@ -46,6 +46,23 @@
             map.setFilter('countries-label', [
                 'all',
                 ['!', ['in', ['get', 'ABBREV'], ['literal', abbrevsToHide]]]
+            ]);
+        }
+        
+        // Function to show only specific countries
+        function showOnlyCountries() {
+            const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
+            const filter = ['all', ['in', ['get', 'ADM0_A3'], ['literal', countriesToShow]]];
+            
+            layersToFilter.forEach(layerId => {
+                map.setFilter(layerId, filter);
+            });
+            
+            const abbrevsToShow = countriesToShow.map(code => codeToAbbrev[code]).filter(Boolean);
+            
+            map.setFilter('countries-label', [
+                'all',
+                ['in', ['get', 'ABBREV'], ['literal', abbrevsToShow]]
             ]);
         }
         
@@ -96,7 +113,7 @@
         `;
         dialog.innerHTML = `
             <div style="margin-bottom: 16px; font-size: 18px; font-weight: 600; color: white;">
-                Are you Donald Trump?
+                Are you X?
             </div>
             <div style="display: flex; gap: 12px;">
                 <button id="yesBtn" data-value="yes" style="
@@ -139,7 +156,12 @@
         
         // Handle button clicks
         yesBtn.addEventListener('click', () => {
-            applyCountryFilters();
+            if (isFirstClick) {
+                hideCountries();
+                isFirstClick = false;
+            } else {
+                showOnlyCountries();
+            }
             // Visual feedback for selected state
             yesBtn.style.background = 'white';
             yesBtn.style.color = '#667eea';
@@ -148,6 +170,7 @@
         
         noBtn.addEventListener('click', () => {
             removeCountryFilters();
+            isFirstClick = true; // Reset to first click state
             // Visual feedback for selected state
             noBtn.style.background = 'rgba(255,255,255,0.2)';
             yesBtn.style.background = 'rgba(255,255,255,0.5)';
