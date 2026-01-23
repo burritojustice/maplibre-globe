@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Greenland Defense Plan</title>
-    <meta property="og:description" content="Show and hide countries on a globe" />
-    <meta property="og:title" content="Hide and Seek" />
-    <meta property="og:description" content="Show and hide gropus of countries" />
+    <title>Hide and Seek</title>
+    <!-- <meta property="og:description" content="Greenland Defense Plan." />
+    <meta property="og:title" content="Greenland Defense Plan" />
+    <meta property="og:description" content="Show and Hide countries" />
     <meta property="og:image" content="https://burritojustice.github.io/maplibre-globe/greenland/preview.jpg" />
     <meta property="og:url" content="https://burritojustice.github.io/maplibre-globe/show-hide/" />
-    <meta property="og:type" content="https://burritojustice.github.io/maplibre-globe/show-hide/" />
+    <meta property="og:type" content="https://burritojustice.github.io/maplibre-globe/show-hide/" /> -->
     <meta charset='utf-8'>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css' />
@@ -20,6 +20,16 @@
 <body>
 <div id="map"></div>
 <script>
+    // Define country groups
+    const countryGroups = {
+        "NATO": ["ALB","BEL","BGR","CAN","HRV","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","ISL","ITA","LVA","LTU","LUX","MNE","NLD","MKD","NOR","POL","PRT","ROU","SVK","SVN","ESP","SWE","TUR","GBR","USA"],
+        "EU": ["AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD","POL","PRT","ROU","SVK","SVN","ESP","SWE"],
+        "G7": ["USA","CAN","GBR","ITA","FRA","DEU","JPN"],
+        "ASEAN": ["BRN","KHM","IDN","LAO","MYS","MMR","PHL","SGP","THA","VNM"],
+        "MERCOSUR": ["ARG","BOL","BRA","PRY","URY","VEN"],
+        "AfCFTA": ["DZA","AGO","BEN","BWA","BFA","BDI","CPV","CMR","CAF","TCD","COM","COG","COD","DJI","EGY","GNQ","SWZ","ETH","GAB","GMB","GHA","GIN","GNB","KEN","LSO","LBR","LBY","MDG","MWI","MLI","MRT","MUS","MAR","MOZ","NAM","NER","NGA","RWA","STP","SEN","SYC","SLE","SOM","ZAF","SSD","SDN","TZA","TGO","TUN","UGA","ZMB","ZWE"]
+    };
+
     // Parse URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const hideParam = urlParams.get('hide');
@@ -94,21 +104,19 @@
                 return;
             }
             
-            const features = map.querySourceFeatures('maplibre', {
-                sourceLayer: 'countries',
-                filter: ['in', ['get', 'ADM0_A3'], ['literal', Array.from(selectedCountries)]]
-            });
+            // Query all rendered features from the countries layer
+            const features = map.queryRenderedFeatures({
+                layers: ['countries-boundary']
+            }).filter(feature => selectedCountries.has(feature.properties.ADM0_A3));
             
             console.log('Selected features for outline:', features.length);
             
-            map.getSource('selected-countries').setData({
-                type: 'FeatureCollection',
-                features: features.map(f => ({
-                    type: 'Feature',
-                    geometry: f.geometry,
-                    properties: f.properties
-                }))
-            });
+            if (features.length > 0) {
+                map.getSource('selected-countries').setData({
+                    type: 'FeatureCollection',
+                    features: features
+                });
+            }
         }
         
         // Function to hide specific countries
@@ -155,7 +163,7 @@
             
             map.setFilter('countries-label', null);
         }
-
+        
         // Function to update URL with current selection
         function updateURL() {
             const url = new URL(window.location);
@@ -172,9 +180,6 @@
                 } else if (showActive) {
                     url.searchParams.set('show', countryList);
                     url.searchParams.delete('hide');
-                } else {
-                    // When neither is active but countries are selected, don't update URL
-                    // (or you could choose to keep the last active state)
                 }
             }
             
@@ -242,6 +247,24 @@
         map.on('mouseleave', 'countries-fill', () => {
             map.getCanvas().style.cursor = '';
         });
+        
+        // Build preset buttons HTML dynamically
+        const presetButtonsHTML = Object.keys(countryGroups).map(groupName => `
+            <button class="preset-btn" data-group="${groupName}" style="
+                padding: 8px 16px;
+                border: none;
+                border-radius: 6px;
+                background: rgba(255,255,255,0.2);
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            " onmouseover="this.style.background='rgba(255,255,255,0.3)';" 
+               onmouseout="this.style.background='rgba(255,255,255,0.2)';">
+                ${groupName}
+            </button>
+        `).join('');
         
         // Create dialog
         const dialog = document.createElement('div');
@@ -321,34 +344,6 @@
         const hideBtn = document.getElementById('hideBtn');
         const showBtn = document.getElementById('showBtn');
         const clearBtn = document.getElementById('clearBtn');
-
-        // Define country groups
-        const countryGroups = {
-            "NATO": ["ALB","BEL","BGR","CAN","HRV","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","ISL","ITA","LVA","LTU","LUX","MNE","NLD","MKD","NOR","POL","PRT","ROU","SVK","SVN","ESP","SWE","TUR","GBR","USA"],
-            "EU": ["AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD","POL","PRT","ROU","SVK","SVN","ESP","SWE"],
-            "G7": ["USA","CAN","GBR","ITA","FRA","DEU","JPN"],
-            "ASEAN": ["BRN","KHM","IDN","LAO","MYS","MMR","PHL","SGP","THA","VNM"],
-            "MERCOSUR": ["ARG","BOL","BRA","PRY","URY","VEN"],
-            "AfCFTA": ["DZA","AGO","BEN","BWA","BFA","BDI","CPV","CMR","CAF","TCD","COM","COG","COD","DJI","EGY","GNQ","SWZ","ETH","GAB","GMB","GHA","GIN","GNB","KEN","LSO","LBR","LBY","MDG","MWI","MLI","MRT","MUS","MAR","MOZ","NAM","NER","NGA","RWA","STP","SEN","SYC","SLE","SOM","ZAF","SSD","SDN","TZA","TGO","TUN","UGA","ZMB","ZWE"]
-        };
-        
-        // Build preset buttons HTML dynamically
-        const presetButtonsHTML = Object.keys(countryGroups).map(groupName => `
-            <button class="preset-btn" data-group="${groupName}" style="
-                padding: 8px 16px;
-                border: none;
-                border-radius: 6px;
-                background: rgba(255,255,255,0.2);
-                color: white;
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            " onmouseover="this.style.background='rgba(255,255,255,0.3)';" 
-               onmouseout="this.style.background='rgba(255,255,255,0.2)';">
-                ${groupName}
-            </button>
-        `).join('');
         
         function updateButtonStyles() {
             if (hideActive) {
@@ -424,6 +419,7 @@
             updateButtonStyles();
             updateURL();
         });
+        
         // Handle preset group buttons
         document.querySelectorAll('.preset-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -444,7 +440,7 @@
                 
                 console.log('Preset selected:', groupName, Array.from(selectedCountries));
             });
-});
+        });
     });
 </script>
 </body>
