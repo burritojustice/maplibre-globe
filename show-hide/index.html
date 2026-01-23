@@ -262,7 +262,7 @@
             <div style="margin-bottom: 16px; font-size: 18px; font-weight: 600; color: white;">
                 Hide and Seek
             </div>
-            <div style="display: flex; gap: 12px;">
+            <div style="display: flex; gap: 12px; margin-bottom: 12px;">
                 <button id="hideBtn" style="
                     flex: 1;
                     padding: 12px 24px;
@@ -312,12 +312,43 @@
                     Clear
                 </button>
             </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                ${presetButtonsHTML}
+            </div>
         `;
         document.body.appendChild(dialog);
         
         const hideBtn = document.getElementById('hideBtn');
         const showBtn = document.getElementById('showBtn');
         const clearBtn = document.getElementById('clearBtn');
+
+        // Define country groups
+        const countryGroups = {
+            "NATO": ["ALB","BEL","BGR","CAN","HRV","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","ISL","ITA","LVA","LTU","LUX","MNE","NLD","MKD","NOR","POL","PRT","ROU","SVK","SVN","ESP","SWE","TUR","GBR","USA"],
+            "EU": ["AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD","POL","PRT","ROU","SVK","SVN","ESP","SWE"],
+            "G7": ["USA","CAN","GBR","ITA","FRA","DEU","JPN"],
+            "ASEAN": ["BRN","KHM","IDN","LAO","MYS","MMR","PHL","SGP","THA","VNM"],
+            "MERCOSUR": ["ARG","BOL","BRA","PRY","URY","VEN"],
+            "AfCFTA": ["DZA","AGO","BEN","BWA","BFA","BDI","CPV","CMR","CAF","TCD","COM","COG","COD","DJI","EGY","GNQ","SWZ","ETH","GAB","GMB","GHA","GIN","GNB","KEN","LSO","LBR","LBY","MDG","MWI","MLI","MRT","MUS","MAR","MOZ","NAM","NER","NGA","RWA","STP","SEN","SYC","SLE","SOM","ZAF","SSD","SDN","TZA","TGO","TUN","UGA","ZMB","ZWE"]
+        };
+        
+        // Build preset buttons HTML dynamically
+        const presetButtonsHTML = Object.keys(countryGroups).map(groupName => `
+            <button class="preset-btn" data-group="${groupName}" style="
+                padding: 8px 16px;
+                border: none;
+                border-radius: 6px;
+                background: rgba(255,255,255,0.2);
+                color: white;
+                font-size: 13px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            " onmouseover="this.style.background='rgba(255,255,255,0.3)';" 
+               onmouseout="this.style.background='rgba(255,255,255,0.2)';">
+                ${groupName}
+            </button>
+        `).join('');
         
         function updateButtonStyles() {
             if (hideActive) {
@@ -393,6 +424,27 @@
             updateButtonStyles();
             updateURL();
         });
+        // Handle preset group buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const groupName = btn.getAttribute('data-group');
+                const countries = countryGroups[groupName];
+                
+                // Clear any active filters first
+                if (hideActive || showActive) {
+                    hideActive = false;
+                    showActive = false;
+                    showAllCountries();
+                    updateButtonStyles();
+                }
+                
+                // Set selected countries to the preset group
+                selectedCountries = new Set(countries);
+                updateSelectedOutline();
+                
+                console.log('Preset selected:', groupName, Array.from(selectedCountries));
+            });
+});
     });
 </script>
 </body>
