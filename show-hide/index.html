@@ -25,7 +25,7 @@
         "NATO": ["ALB","BEL","BGR","CAN","HRV","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","ISL","ITA","LVA","LTU","LUX","MNE","NLD","MKD","NOR","POL","PRT","ROU","SVK","SVN","ESP","SWE","TUR","GBR","USA"],
         "EU": ["AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD","POL","PRT","ROU","SVK","SVN","ESP","SWE"],
         "G7": ["USA","CAN","GBR","ITA","FRA","DEU","JPN"],
-        "Board of Peace": ["USA","ALB", "ARG", "ARM", "AZE", "BHR", "BLR", "BGR", "EGY", "HUN", "IDN", "ISR", "JOR", "KAZ", "XKX", "MAR", "MNG", "PAK", "PRY", "QAT", "SAU", "TUR", "ARE", "UZB", "VNM"]
+        "Board of Peace": ["ALB", "ARG", "ARM", "AZE", "BHR", "BLR", "BGR", "EGY", "HUN", "IDN", "ISR", "JOR", "KAZ", "XKX", "MAR", "MNG", "PAK", "PRY", "QAT", "SAU", "TUR", "ARE", "UZB", "VNM"]
     };
 
     // Parse URL parameters
@@ -377,3 +377,88 @@
         }
         
         // Handle Hide button clicks
+        hideBtn.addEventListener('click', () => {
+            if (selectedCountries.size === 0) return;
+            
+            if (hideActive) {
+                // Deactivate - show all countries with selection outlined
+                showAllCountries();
+                hideActive = false;
+                updateSelectedOutline();
+            } else {
+                // Activate - hide selected countries and remove outline
+                hideCountries(Array.from(selectedCountries));
+                hideActive = true;
+                showActive = false;
+                map.getSource('selected-countries').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+            updateButtonStyles();
+            updateURL();
+        });
+        
+        // Handle Show button clicks
+        showBtn.addEventListener('click', () => {
+            if (selectedCountries.size === 0) return;
+            
+            if (showActive) {
+                // Deactivate - show all countries with selection outlined
+                showAllCountries();
+                showActive = false;
+                updateSelectedOutline();
+            } else {
+                // Activate - show only selected countries and remove outline
+                showOnlyCountries(Array.from(selectedCountries));
+                showActive = true;
+                hideActive = false;
+                map.getSource('selected-countries').setData({
+                    type: 'FeatureCollection',
+                    features: []
+                });
+            }
+            updateButtonStyles();
+            updateURL();
+        });
+        
+        // Handle Clear button clicks
+        clearBtn.addEventListener('click', () => {
+            selectedCountries.clear();
+            hideActive = false;
+            showActive = false;
+            showAllCountries();
+            updateSelectedOutline();
+            updateButtonStyles();
+            updateURL();
+        });
+        
+        // Handle preset group buttons
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const groupName = btn.getAttribute('data-group');
+                const countries = countryGroups[groupName];
+                
+                // Clear any active filters first
+                if (hideActive || showActive) {
+                    hideActive = false;
+                    showActive = false;
+                    showAllCountries();
+                    updateButtonStyles();
+                }
+                
+                // Set selected countries to the preset group
+                selectedCountries = new Set(countries);
+                
+                // Call update directly with a small delay to ensure map has rendered
+                setTimeout(() => {
+                    updateSelectedOutline();
+                }, 100);
+                
+                console.log('Preset selected:', groupName, Array.from(selectedCountries));
+            });
+        });
+    });
+</script>
+</body>
+</html>
