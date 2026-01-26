@@ -26,10 +26,6 @@
         "EU": ["AUT","BEL","BGR","HRV","CYP","CZE","DNK","EST","FIN","FRA","DEU","GRC","HUN","IRL","ITA","LVA","LTU","LUX","MLT","NLD","POL","PRT","ROU","SVK","SVN","ESP","SWE"],
         "G7": ["USA","CAN","GBR","ITA","FRA","DEU","JPN"],
         "Board of Peace": ["ALB", "ARG", "ARM", "AZE", "BHR", "BLR", "BGR", "EGY", "HUN", "IDN", "ISR", "JOR", "KAZ", "XKX", "MAR", "MNG", "PAK", "PRY", "QAT", "SAU", "TUR", "ARE", "UZB", "VNM"]
-        // "ASEAN": ["BRN","KHM","IDN","LAO","MYS","MMR","PHL","SGP","THA","VNM"],
-        // "MERCOSUR": ["ARG","BOL","BRA","PRY","URY","VEN"],
-        // "AfCFTA": ["DZA","AGO","BEN","BWA","BFA","BDI","CPV","CMR","CAF","TCD","COM","COG","COD","DJI","EGY","GNQ","SWZ","ETH","GAB","GMB","GHA","GIN","GNB","KEN","LSO","LBR","LBY","MDG","MWI","MLI","MRT","MUS","MAR","MOZ","NAM","NER","NGA","RWA","STP","SEN","SYC","SLE","SOM","ZAF","SSD","SDN","TZA","TGO","TUN","UGA","ZMB","ZWE"],
-        // "CARICOM": ["ATG", "BHS", "BRB", "BLZ", "DMA", "GRD", "GUY", "HTI", "JAM", "KNA", "LCA", "VCT", "SUR", "TTO"]
     };
 
     // Parse URL parameters
@@ -98,6 +94,8 @@
         
         // Function to update selected countries outline
         function updateSelectedOutline() {
+            console.log('updateSelectedOutline called, selectedCountries:', Array.from(selectedCountries));
+            
             if (selectedCountries.size === 0) {
                 map.getSource('selected-countries').setData({
                     type: 'FeatureCollection',
@@ -111,19 +109,24 @@
                 sourceLayer: 'countries'
             });
             
+            console.log('Total features from querySourceFeatures:', allFeatures.length);
+            
             const selectedFeatures = allFeatures.filter(feature => 
                 selectedCountries.has(feature.properties.ADM0_A3)
             );
             
-            console.log('Total features:', allFeatures.length);
             console.log('Selected features for outline:', selectedFeatures.length);
-            console.log('Selected countries:', Array.from(selectedCountries));
+            console.log('First selected feature:', selectedFeatures[0]);
             
             if (selectedFeatures.length > 0) {
-                map.getSource('selected-countries').setData({
+                const featureCollection = {
                     type: 'FeatureCollection',
                     features: selectedFeatures
-                });
+                };
+                console.log('Setting data with', selectedFeatures.length, 'features');
+                map.getSource('selected-countries').setData(featureCollection);
+            } else {
+                console.log('No features found to display!');
             }
         }
         
@@ -241,10 +244,8 @@
                 selectedCountries.add(countryCode);
             }
             
-            // Wait for map to be idle before updating outline
-            map.once('idle', () => {
-                updateSelectedOutline();
-            });
+            // Call update directly
+            updateSelectedOutline();
             
             console.log('Selected countries:', Array.from(selectedCountries));
         });
@@ -376,90 +377,3 @@
         }
         
         // Handle Hide button clicks
-        hideBtn.addEventListener('click', () => {
-            if (selectedCountries.size === 0) return;
-            
-            if (hideActive) {
-                // Deactivate - show all countries with selection outlined
-                showAllCountries();
-                hideActive = false;
-                updateSelectedOutline();
-            } else {
-                // Activate - hide selected countries and remove outline
-                hideCountries(Array.from(selectedCountries));
-                hideActive = true;
-                showActive = false;
-                map.getSource('selected-countries').setData({
-                    type: 'FeatureCollection',
-                    features: []
-                });
-            }
-            updateButtonStyles();
-            updateURL();
-        });
-        
-        // Handle Show button clicks
-        showBtn.addEventListener('click', () => {
-            if (selectedCountries.size === 0) return;
-            
-            if (showActive) {
-                // Deactivate - show all countries with selection outlined
-                showAllCountries();
-                showActive = false;
-                updateSelectedOutline();
-            } else {
-                // Activate - show only selected countries and remove outline
-                showOnlyCountries(Array.from(selectedCountries));
-                showActive = true;
-                hideActive = false;
-                map.getSource('selected-countries').setData({
-                    type: 'FeatureCollection',
-                    features: []
-                });
-            }
-            updateButtonStyles();
-            updateURL();
-        });
-        
-        // Handle Clear button clicks
-        clearBtn.addEventListener('click', () => {
-            selectedCountries.clear();
-            hideActive = false;
-            showActive = false;
-            showAllCountries();
-            updateSelectedOutline();
-            updateButtonStyles();
-            updateURL();
-        });
-        
-        // Handle preset group buttons
-        document.querySelectorAll('.preset-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const groupName = btn.getAttribute('data-group');
-                const countries = countryGroups[groupName];
-                
-                // Clear any active filters first
-                if (hideActive || showActive) {
-                    hideActive = false;
-                    showActive = false;
-                    showAllCountries();
-                    updateButtonStyles();
-                }
-                
-                // Set selected countries to the preset group
-                selectedCountries = new Set(countries);
-                
-                // Wait for the map to finish rendering before updating outline
-                map.once('idle', () => {
-                    updateSelectedOutline();
-                });
-                
-                console.log('Preset selected:', groupName, Array.from(selectedCountries));
-                console.log('Outline layer exists:', map.getLayer('selected-countries-outline'));
-                console.log('Outline source exists:', map.getSource('selected-countries'));
-            });
-        });
-    });
-</script>
-</body>
-</html>
