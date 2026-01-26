@@ -94,8 +94,6 @@
         
         // Function to update selected countries outline
         function updateSelectedOutline() {
-            console.log('updateSelectedOutline called, selectedCountries:', Array.from(selectedCountries));
-            
             if (selectedCountries.size === 0) {
                 map.getSource('selected-countries').setData({
                     type: 'FeatureCollection',
@@ -104,29 +102,18 @@
                 return;
             }
             
-            // Query source features instead of rendered features
-            const allFeatures = map.querySourceFeatures('maplibre', {
-                sourceLayer: 'countries'
-            });
+            // Query all rendered features from the countries layer
+            const features = map.queryRenderedFeatures({
+                layers: ['countries-boundary']
+            }).filter(feature => selectedCountries.has(feature.properties.ADM0_A3));
             
-            console.log('Total features from querySourceFeatures:', allFeatures.length);
+            console.log('Selected features for outline:', features.length);
             
-            const selectedFeatures = allFeatures.filter(feature => 
-                selectedCountries.has(feature.properties.ADM0_A3)
-            );
-            
-            console.log('Selected features for outline:', selectedFeatures.length);
-            console.log('First selected feature:', selectedFeatures[0]);
-            
-            if (selectedFeatures.length > 0) {
-                const featureCollection = {
+            if (features.length > 0) {
+                map.getSource('selected-countries').setData({
                     type: 'FeatureCollection',
-                    features: selectedFeatures
-                };
-                console.log('Setting data with', selectedFeatures.length, 'features');
-                map.getSource('selected-countries').setData(featureCollection);
-            } else {
-                console.log('No features found to display!');
+                    features: features
+                });
             }
         }
         
