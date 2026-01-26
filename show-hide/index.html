@@ -234,10 +234,14 @@
                 selectedCountries.add(countryCode);
             }
             
-            updateSelectedOutline();
+            // Wait for map to be idle before updating outline
+            map.once('idle', () => {
+                updateSelectedOutline();
+            });
+            
             console.log('Selected countries:', Array.from(selectedCountries));
         });
-        
+                
         // Change cursor on hover
         map.on('mouseenter', 'countries-fill', () => {
             if (!hideActive && !showActive) {
@@ -437,7 +441,11 @@
                 
                 // Set selected countries to the preset group
                 selectedCountries = new Set(countries);
-                updateSelectedOutline();
+                
+                // Wait for the map to finish rendering before updating outline
+                map.once('idle', () => {
+                    updateSelectedOutline();
+                });
                 
                 console.log('Preset selected:', groupName, Array.from(selectedCountries));
             });
