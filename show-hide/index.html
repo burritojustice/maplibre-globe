@@ -105,17 +105,23 @@
                 return;
             }
             
-            // Query all rendered features from the countries layer
-            const features = map.queryRenderedFeatures({
-                layers: ['countries-boundary']
-            }).filter(feature => selectedCountries.has(feature.properties.ADM0_A3));
+            // Query source features instead of rendered features
+            const allFeatures = map.querySourceFeatures('maplibre', {
+                sourceLayer: 'countries'
+            });
             
-            console.log('Selected features for outline:', features.length);
+            const selectedFeatures = allFeatures.filter(feature => 
+                selectedCountries.has(feature.properties.ADM0_A3)
+            );
             
-            if (features.length > 0) {
+            console.log('Total features:', allFeatures.length);
+            console.log('Selected features for outline:', selectedFeatures.length);
+            console.log('Selected countries:', Array.from(selectedCountries));
+            
+            if (selectedFeatures.length > 0) {
                 map.getSource('selected-countries').setData({
                     type: 'FeatureCollection',
-                    features: features
+                    features: selectedFeatures
                 });
             }
         }
