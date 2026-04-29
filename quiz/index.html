@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>World Map Quiz</title>
+    <meta charset='utf-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css' />
+    <script src='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.js'></script>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: #0a0a0f;
+            color: #e8e8d0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        html, body, #map { height: 100%; }
+
+        #map { position: absolute; inset: 0; }
+
+        /* HUD overlay */
+        #hud {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        #top-bar {
+            display: flex;
+            align-items: stretch;
+            background: #0a0a0f;
+            border-bottom: 2px solid #f0e040;
+            pointer-events: all;
+        }
+
+        #title-block {
+            padding: 12px 20px;
+            border-right: 2px solid #f0e040;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #title-block h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 28px;
+            letter-spacing: 3px;
+            color: #f0e040;
+            line-height: 1;
+        }
+
+        #title-block span {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #888;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        #score-block {
+            padding: 12px 20px;
+            border-right: 2px solid #f0e040;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 120px;
+        }
+
+        #score-block .label {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        #score-display {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 32px;
+            color: #f0e040;
+            line-height: 1;
+        }
+
+        #progress-block {
+            padding: 12px 20px;
+            border-right: 2px solid #f0e040;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 160px;
+        }
+
+        #progress-block .label {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        #progress-bar-outer {
+            height: 8px;
+            background: #222;
+            border: 1px solid #444;
+        }
+
+        #progress-bar-inner {
+            height: 100%;
+            background: #f0e040;
+            transition: width 0.4s ease;
+            width: 0%;
+        }
+
+        #progress-text {
+            font-size: 10px;
+            color: #888;
+            margin-top: 3px;
+        }
+
+        #continent-select-block {
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        #continent-select-block .label {
+            font-size: 9px;
+            letter-spacing: 2px;
+            color: #888;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        #continent-select {
+            background: #111;
+            color: #f0e040;
+            border: 1px solid #444;
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            padding: 6px 10px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        #continent-select:hover { border-color: #f0e040; }
+
+        #start-btn {
+            margin-left: auto;
+            background: #f0e040;
+            color: #0a0a0f;
+            border: none;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 20px;
+            letter-spacing: 2px;
+            padding: 0 28px;
+            cursor: pointer;
+            transition: background 0.15s;
+            pointer-events: all;
+        }
+
+        #start-btn:hover { background: #fff; }
+        #start-btn:disabled { background: #444; color: #666; cursor: not-allowed; }
+
+        /* Question card */
+        #question-card {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: #0a0a0f;
+            border: 2px solid #f0e040;
+            padding: 20px 32px;
+            min-width: 340px;
+            max-width: 480px;
+            text-align: center;
+            display: none;
+        }
+
+        #question-label {
+            font-size: 9px;
+            letter-spacing: 3px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        #country-name {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 42px;
+            color: #f0e040;
+            letter-spacing: 2px;
+            line-height: 1;
+        }
+
+        #feedback {
+            margin-top: 10px;
+            font-size: 13px;
+            min-height: 20px;
+            letter-spacing: 1px;
+            transition: color 0.2s;
+        }
+
+        #feedback.correct { color: #50e080; }
+        #feedback.wrong { color: #e05050; }
+
+        #skip-btn {
+            margin-top: 12px;
+            background: transparent;
+            color: #666;
+            border: 1px solid #333;
+            font-family: 'Space Mono', monospace;
+            font-size: 10px;
+            letter-spacing: 1px;
+            padding: 6px 16px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        #skip-btn:hover { border-color: #888; color: #aaa; }
+        #skip-btn { display: none; }
+
+        /* Results panel */
+        #results-panel {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: rgba(10,10,15,0.92);
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #results-inner {
+            background: #0a0a0f;
+            border: 2px solid #f0e040;
+            padding: 40px 48px;
+            max-width: 440px;
+            width: 90%;
+            text-align: center;
+        }
+
+        #results-inner h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 52px;
+            color: #f0e040;
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+        }
+
+        #results-inner .sub {
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 24px;
+        }
+
+        #final-score-big {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 88px;
+            line-height: 1;
+            color: #f0e040;
+        }
+
+        #results-breakdown {
+            margin: 16px 0 24px;
+            font-size: 12px;
+            color: #aaa;
+            line-height: 1.8;
+        }
+
+        .result-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #1a1a1a; }
+        .result-row .country { text-align: left; }
+        .result-row .status-ok { color: #50e080; }
+        .result-row .status-bad { color: #e05050; }
+
+        #retry-btn, #new-continent-btn {
+            display: inline-block;
+            background: transparent;
+            border: 2px solid #f0e040;
+            color: #f0e040;
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 22px;
+            letter-spacing: 2px;
+            padding: 10px 28px;
+            cursor: pointer;
+            margin: 0 6px;
+            transition: all 0.15s;
+        }
+
+        #retry-btn:hover, #new-continent-btn:hover {
+            background: #f0e040;
+            color: #0a0a0f;
+        }
+
+        #retry-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* Map overlays (maplibre attribution) */
+        .maplibregl-ctrl-bottom-right { display: none; }
+        .maplibregl-ctrl-bottom-left { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- HUD -->
+<div id="hud">
+    <div id="top-bar">
+        <div id="title-block">
+            <h1>GeoQuiz</h1>
+            <span>World Map Challenge</span>
+        </div>
+        <div id="score-block">
+            <div class="label">Score</div>
+            <div id="score-display">0 / 0</div>
+        </div>
+        <div id="progress-block">
+            <div class="label">Progress</div>
+            <div id="progress-bar-outer"><div id="progress-bar-inner"></div></div>
+            <div id="progress-text">— countries remaining</div>
+        </div>
+        <div id="continent-select-block">
+            <span class="label">Continent</span>
+            <select id="continent-select">
+                <option value="">— pick a continent —</option>
+                <option value="Africa">Africa</option>
+                <option value="Asia">Asia</option>
+                <option value="Europe">Europe</option>
+                <option value="North America">North America</option>
+                <option value="South America">South America</option>
+                <option value="Oceania">Oceania</option>
+                <option value="ALL">🌍 All Continents</option>
+            </select>
+        </div>
+        <button id="start-btn" disabled>START</button>
+    </div>
+</div>
+
+<!-- Question card -->
+<div id="question-card">
+    <div id="question-label">Find this country on the map</div>
+    <div id="country-name">—</div>
+    <div id="feedback"></div>
+    <button id="skip-btn">skip</button>
+</div>
+
+<!-- Results -->
+<div id="results-panel">
+    <div id="results-inner">
+        <h2>Round Complete</h2>
+        <div class="sub">Here's how you did</div>
+        <div id="final-score-big">0%</div>
+        <div id="results-breakdown"></div>
+        <button id="retry-btn">Retry Missed</button>
+        <button id="new-continent-btn">New Quiz</button>
+    </div>
+</div>
+
+<script>
+// ─── CSV data (embedded) ───────────────────────────────────────────────────
+const CSV = `Continent_Name,Continent_Code,Country_Name,Two_Letter_Country_Code,Three_Letter_Country_Code,Country_Number
+Asia,AS,"Afghanistan, Islamic Republic of",AF,AFG,4
+Europe,EU,"Albania, Republic of",AL,ALB,8
+Africa,AF,"Algeria, People's Democratic Republic of",DZ,DZA,12
+Oceania,OC,American Samoa,AS,ASM,16
+Europe,EU,"Andorra, Principality of",AD,AND,20
+Africa,AF,"Angola, Republic of",AO,AGO,24
+North America,NA,Antigua and Barbuda,AG,ATG,28
+Europe,EU,"Azerbaijan, Republic of",AZ,AZE,31
+South America,SA,"Argentina, Argentine Republic",AR,ARG,32
+Oceania,OC,"Australia, Commonwealth of",AU,AUS,36
+Europe,EU,"Austria, Republic of",AT,AUT,40
+North America,NA,"Bahamas, Commonwealth of the",BS,BHS,44
+Asia,AS,"Bahrain, Kingdom of",BH,BHR,48
+Asia,AS,"Bangladesh, People's Republic of",BD,BGD,50
+Europe,EU,"Armenia, Republic of",AM,ARM,51
+North America,NA,Barbados,BB,BRB,52
+Europe,EU,"Belgium, Kingdom of",BE,BEL,56
+Asia,AS,"Bhutan, Kingdom of",BT,BTN,64
+South America,SA,"Bolivia, Republic of",BO,BOL,68
+Europe,EU,Bosnia and Herzegovina,BA,BIH,70
+Africa,AF,"Botswana, Republic of",BW,BWA,72
+South America,SA,"Brazil, Federative Republic of",BR,BRA,76
+North America,NA,Belize,BZ,BLZ,84
+Oceania,OC,Solomon Islands,SB,SLB,90
+Asia,AS,Brunei Darussalam,BN,BRN,96
+Europe,EU,"Bulgaria, Republic of",BG,BGR,100
+Asia,AS,"Myanmar, Union of",MM,MMR,104
+Africa,AF,"Burundi, Republic of",BI,BDI,108
+Europe,EU,"Belarus, Republic of",BY,BLR,112
+Asia,AS,"Cambodia, Kingdom of",KH,KHM,116
+Africa,AF,"Cameroon, Republic of",CM,CMR,120
+North America,NA,Canada,CA,CAN,124
+Africa,AF,Central African Republic,CF,CAF,140
+Asia,AS,"Sri Lanka, Democratic Socialist Republic of",LK,LKA,144
+Africa,AF,"Chad, Republic of",TD,TCD,148
+South America,SA,"Chile, Republic of",CL,CHL,152
+Asia,AS,"China, People's Republic of",CN,CHN,156
+Asia,AS,Taiwan,TW,TWN,158
+South America,SA,"Colombia, Republic of",CO,COL,170
+Africa,AF,"Comoros, Union of the",KM,COM,174
+Africa,AF,"Congo, Republic of the",CG,COG,178
+Africa,AF,"Congo, Democratic Republic of the",CD,COD,180
+North America,NA,"Costa Rica, Republic of",CR,CRI,188
+Europe,EU,"Croatia, Republic of",HR,HRV,191
+North America,NA,"Cuba, Republic of",CU,CUB,192
+Europe,EU,"Cyprus, Republic of",CY,CYP,196
+Europe,EU,Czech Republic,CZ,CZE,203
+Africa,AF,"Benin, Republic of",BJ,BEN,204
+Europe,EU,"Denmark, Kingdom of",DK,DNK,208
+North America,NA,Dominican Republic,DO,DOM,214
+South America,SA,"Ecuador, Republic of",EC,ECU,218
+North America,NA,"El Salvador, Republic of",SV,SLV,222
+Africa,AF,"Equatorial Guinea, Republic of",GQ,GNQ,226
+Africa,AF,"Ethiopia, Federal Democratic Republic of",ET,ETH,231
+Africa,AF,"Eritrea, State of",ER,ERI,232
+Europe,EU,"Estonia, Republic of",EE,EST,233
+Oceania,OC,"Fiji, Republic of the Fiji Islands",FJ,FJI,242
+Europe,EU,"Finland, Republic of",FI,FIN,246
+Europe,EU,"France, French Republic",FR,FRA,250
+Africa,AF,"Djibouti, Republic of",DJ,DJI,262
+Africa,AF,"Gabon, Gabonese Republic",GA,GAB,266
+Europe,EU,Georgia,GE,GEO,268
+Africa,AF,"Gambia, Republic of the",GM,GMB,270
+Europe,EU,"Germany, Federal Republic of",DE,DEU,276
+Africa,AF,"Ghana, Republic of",GH,GHA,288
+Europe,EU,"Greece, Hellenic Republic",GR,GRC,300
+North America,NA,Greenland,GL,GRL,304
+North America,NA,Grenada,GD,GRD,308
+North America,NA,"Guatemala, Republic of",GT,GTM,320
+Africa,AF,"Guinea, Republic of",GN,GIN,324
+South America,SA,"Guyana, Co-operative Republic of",GY,GUY,328
+North America,NA,"Haiti, Republic of",HT,HTI,332
+North America,NA,"Honduras, Republic of",HN,HND,340
+Europe,EU,"Hungary, Republic of",HU,HUN,348
+Europe,EU,"Iceland, Republic of",IS,ISL,352
+Asia,AS,"India, Republic of",IN,IND,356
+Asia,AS,"Indonesia, Republic of",ID,IDN,360
+Asia,AS,"Iran, Islamic Republic of",IR,IRN,364
+Asia,AS,"Iraq, Republic of",IQ,IRQ,368
+Europe,EU,Ireland,IE,IRL,372
+Asia,AS,"Israel, State of",IL,ISR,376
+Europe,EU,"Italy, Italian Republic",IT,ITA,380
+Africa,AF,"Cote d'Ivoire, Republic of",CI,CIV,384
+North America,NA,Jamaica,JM,JAM,388
+Asia,AS,Japan,JP,JPN,392
+Asia,AS,"Jordan, Hashemite Kingdom of",JO,JOR,400
+Africa,AF,"Kenya, Republic of",KE,KEN,404
+Asia,AS,"Korea, Democratic People's Republic of",KP,PRK,408
+Asia,AS,"Korea, Republic of",KR,KOR,410
+Asia,AS,"Kuwait, State of",KW,KWT,414
+Asia,AS,Kyrgyz Republic,KG,KGZ,417
+Asia,AS,Lao People's Democratic Republic,LA,LAO,418
+Asia,AS,"Lebanon, Lebanese Republic",LB,LBN,422
+Africa,AF,"Lesotho, Kingdom of",LS,LSO,426
+Europe,EU,"Latvia, Republic of",LV,LVA,428
+Africa,AF,"Liberia, Republic of",LR,LBR,430
+Africa,AF,Libyan Arab Jamahiriya,LY,LBY,434
+Europe,EU,"Lithuania, Republic of",LT,LTU,440
+Europe,EU,"Luxembourg, Grand Duchy of",LU,LUX,442
+Africa,AF,"Madagascar, Republic of",MG,MDG,450
+Africa,AF,"Malawi, Republic of",MW,MWI,454
+Asia,AS,Malaysia,MY,MYS,458
+Africa,AF,"Mali, Republic of",ML,MLI,466
+Europe,EU,"Malta, Republic of",MT,MLT,470
+Africa,AF,"Mauritania, Islamic Republic of",MR,MRT,478
+Africa,AF,"Mauritius, Republic of",MU,MUS,480
+North America,NA,"Mexico, United Mexican States",MX,MEX,484
+Asia,AS,Mongolia,MN,MNG,496
+Europe,EU,"Moldova, Republic of",MD,MDA,498
+Europe,EU,"Montenegro, Republic of",ME,MNE,499
+Africa,AF,"Morocco, Kingdom of",MA,MAR,504
+Africa,AF,"Mozambique, Republic of",MZ,MOZ,508
+Africa,AF,"Namibia, Republic of",NA,NAM,516
+Asia,AS,"Nepal, State of",NP,NPL,524
+Europe,EU,"Netherlands, Kingdom of the",NL,NLD,528
+Oceania,OC,New Zealand,NZ,NZL,554
+North America,NA,"Nicaragua, Republic of",NI,NIC,558
+Africa,AF,"Niger, Republic of",NE,NER,562
+Africa,AF,"Nigeria, Federal Republic of",NG,NGA,566
+Europe,EU,"Norway, Kingdom of",NO,NOR,578
+Asia,AS,"Pakistan, Islamic Republic of",PK,PAK,586
+North America,NA,"Panama, Republic of",PA,PAN,591
+Oceania,OC,"Papua New Guinea, Independent State of",PG,PNG,598
+South America,SA,"Paraguay, Republic of",PY,PRY,600
+South America,SA,"Peru, Republic of",PE,PER,604
+Asia,AS,"Philippines, Republic of the",PH,PHL,608
+Europe,EU,"Poland, Republic of",PL,POL,616
+Europe,EU,"Portugal, Portuguese Republic",PT,PRT,620
+Asia,AS,"Qatar, State of",QA,QAT,634
+Europe,EU,Romania,RO,ROU,642
+Europe,EU,Russian Federation,RU,RUS,643
+Africa,AF,"Rwanda, Republic of",RW,RWA,646
+Asia,AS,"Saudi Arabia, Kingdom of",SA,SAU,682
+Africa,AF,"Senegal, Republic of",SN,SEN,686
+Europe,EU,"Serbia, Republic of",RS,SRB,688
+Africa,AF,"Sierra Leone, Republic of",SL,SLE,694
+Asia,AS,"Singapore, Republic of",SG,SGP,702
+Europe,EU,Slovakia (Slovak Republic),SK,SVK,703
+Asia,AS,"Vietnam, Socialist Republic of",VN,VNM,704
+Europe,EU,"Slovenia, Republic of",SI,SVN,705
+Africa,AF,"Somalia, Somali Republic",SO,SOM,706
+Africa,AF,"South Africa, Republic of",ZA,ZAF,710
+Africa,AF,"Zimbabwe, Republic of",ZW,ZWE,716
+Europe,EU,"Spain, Kingdom of",ES,ESP,724
+Africa,AF,South Sudan,SS,SSD,728
+Africa,AF,"Sudan, Republic of",SD,SDN,736
+South America,SA,"Suriname, Republic of",SR,SUR,740
+Europe,EU,"Sweden, Kingdom of",SE,SWE,752
+Europe,EU,"Switzerland, Swiss Confederation",CH,CHE,756
+Asia,AS,Syrian Arab Republic,SY,SYR,760
+Asia,AS,"Tajikistan, Republic of",TJ,TJK,762
+Asia,AS,"Thailand, Kingdom of",TH,THA,764
+Africa,AF,"Togo, Togolese Republic",TG,TGO,768
+North America,NA,"Trinidad and Tobago, Republic of",TT,TTO,780
+Africa,AF,"Tunisia, Tunisian Republic",TN,TUN,788
+Europe,EU,"Turkey, Republic of",TR,TUR,792
+Asia,AS,Turkmenistan,TM,TKM,795
+Africa,AF,"Uganda, Republic of",UG,UGA,800
+Europe,EU,Ukraine,UA,UKR,804
+Africa,AF,"Egypt, Arab Republic of",EG,EGY,818
+Europe,EU,United Kingdom of Great Britain & Northern Ireland,GB,GBR,826
+Africa,AF,"Tanzania, United Republic of",TZ,TZA,834
+North America,NA,United States of America,US,USA,840
+Africa,AF,Burkina Faso,BF,BFA,854
+South America,SA,"Uruguay, Eastern Republic of",UY,URY,858
+Asia,AS,"Uzbekistan, Republic of",UZ,UZB,860
+South America,SA,"Venezuela, Bolivarian Republic of",VE,VEN,862
+Oceania,OC,"Samoa, Independent State of",WS,WSM,882
+Asia,AS,Yemen,YE,YEM,887
+Africa,AF,"Zambia, Republic of",ZM,ZMB,894`;
+
+// ─── Parse CSV ─────────────────────────────────────────────────────────────
+function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',');
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+        const row = {};
+        // handle quoted fields
+        const line = lines[i];
+        const fields = [];
+        let cur = '', inQ = false;
+        for (let c of line) {
+            if (c === '"') { inQ = !inQ; }
+            else if (c === ',' && !inQ) { fields.push(cur); cur = ''; }
+            else { cur += c; }
+        }
+        fields.push(cur);
+        headers.forEach((h, idx) => row[h.trim()] = (fields[idx] || '').trim());
+        rows.push(row);
+    }
+    return rows;
+}
+
+const allCountryData = parseCSV(CSV);
+
+// Deduplicate by three-letter code (some appear in both Asia+Europe)
+const seen = new Set();
+const countries = allCountryData.filter(r => {
+    const code = r['Three_Letter_Country_Code'];
+    if (!code || seen.has(code)) return false;
+    seen.add(code);
+    return true;
+});
+
+// Clean display names
+function displayName(raw) {
+    // "Afghanistan, Islamic Republic of" → "Afghanistan"
+    // But keep "Bosnia and Herzegovina", "Cote d'Ivoire" etc.
+    const m = raw.match(/^([^,]+),\s(.+)$/);
+    if (m) {
+        // Check if the suffix is geographic (keep full name for compound names)
+        const first = m[1].trim();
+        return first;
+    }
+    return raw;
+}
+
+// ─── Quiz state ─────────────────────────────────────────────────────────────
+let quizQueue = [];         // [{country, code}, ...]
+let missedQueue = [];
+let currentQ = null;
+let correctCount = 0;
+let totalAnswered = 0;
+let quizActive = false;
+let waitingForNext = false;  // after answer, before next click
+let results = [];            // {name, code, correct}
+
+// ─── UI refs ────────────────────────────────────────────────────────────────
+const continentSelect = document.getElementById('continent-select');
+const startBtn = document.getElementById('start-btn');
+const questionCard = document.getElementById('question-card');
+const countryNameEl = document.getElementById('country-name');
+const feedbackEl = document.getElementById('feedback');
+const skipBtn = document.getElementById('skip-btn');
+const scoreDisplay = document.getElementById('score-display');
+const progressBarInner = document.getElementById('progress-bar-inner');
+const progressText = document.getElementById('progress-text');
+const resultsPanel = document.getElementById('results-panel');
+const finalScoreBig = document.getElementById('final-score-big');
+const resultsBreakdown = document.getElementById('results-breakdown');
+const retryBtn = document.getElementById('retry-btn');
+const newContinentBtn = document.getElementById('new-continent-btn');
+
+continentSelect.addEventListener('change', () => {
+    startBtn.disabled = !continentSelect.value;
+});
+
+// ─── Map setup ───────────────────────────────────────────────────────────────
+const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://demotiles.maplibre.org/style.json',
+    zoom: 1.5,
+    center: [10, 20],
+    maxZoom: 6,
+    minZoom: 1
+});
+
+map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+// Highlighted country sources
+let highlightSource, correctSource, wrongSource;
+
+map.on('style.load', () => {
+    map.setProjection({ type: 'globe' });
+    map.setLayoutProperty('countries-label', 'visibility', 'none');
+
+    // Source: correct answer flash
+    map.addSource('highlight-correct', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({
+        id: 'highlight-correct-fill',
+        type: 'fill',
+        source: 'highlight-correct',
+        paint: { 'fill-color': '#50e080', 'fill-opacity': 0.7 }
+    });
+    map.addLayer({
+        id: 'highlight-correct-line',
+        type: 'line',
+        source: 'highlight-correct',
+        paint: { 'line-color': '#50e080', 'line-width': 2 }
+    });
+
+    // Source: wrong answer flash
+    map.addSource('highlight-wrong', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({
+        id: 'highlight-wrong-fill',
+        type: 'fill',
+        source: 'highlight-wrong',
+        paint: { 'fill-color': '#e05050', 'fill-opacity': 0.7 }
+    });
+    map.addLayer({
+        id: 'highlight-wrong-line',
+        type: 'line',
+        source: 'highlight-wrong',
+        paint: { 'line-color': '#e05050', 'line-width': 2 }
+    });
+
+    // Source: "answer reveal" when wrong (show correct in yellow)
+    map.addSource('highlight-reveal', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({
+        id: 'highlight-reveal-fill',
+        type: 'fill',
+        source: 'highlight-reveal',
+        paint: { 'fill-color': '#f0e040', 'fill-opacity': 0.6 }
+    });
+    map.addLayer({
+        id: 'highlight-reveal-line',
+        type: 'line',
+        source: 'highlight-reveal',
+        paint: { 'line-color': '#f0e040', 'line-width': 2 }
+    });
+
+    map.on('click', 'countries-fill', handleMapClick);
+    map.on('mouseenter', 'countries-fill', () => {
+        if (quizActive && !waitingForNext) map.getCanvas().style.cursor = 'crosshair';
+    });
+    map.on('mouseleave', 'countries-fill', () => { map.getCanvas().style.cursor = ''; });
+});
+
+function getFeaturesForCode(code) {
+    return map.querySourceFeatures('maplibre', {
+        sourceLayer: 'countries',
+        filter: ['==', ['get', 'ADM0_A3'], code]
+    });
+}
+
+function setSourceFeatures(sourceId, features) {
+    map.getSource(sourceId).setData({
+        type: 'FeatureCollection',
+        features: features.map(f => ({ type: 'Feature', geometry: f.geometry, properties: f.properties }))
+    });
+}
+
+function clearHighlights() {
+    ['highlight-correct', 'highlight-wrong', 'highlight-reveal'].forEach(s => {
+        if (map.getSource(s)) {
+            map.getSource(s).setData({ type: 'FeatureCollection', features: [] });
+        }
+    });
+}
+
+// ─── Quiz logic ───────────────────────────────────────────────────────────────
+function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
+function buildQueue(continent) {
+    let list;
+    if (continent === 'ALL') {
+        list = countries;
+    } else {
+        list = countries.filter(c => c['Continent_Name'] === continent);
+    }
+    return shuffle(list.map(c => ({
+        name: displayName(c['Country_Name']),
+        code: c['Three_Letter_Country_Code']
+    })));
+}
+
+startBtn.addEventListener('click', () => {
+    const continent = continentSelect.value;
+    if (!continent) return;
+    quizQueue = buildQueue(continent);
+    missedQueue = [];
+    results = [];
+    correctCount = 0;
+    totalAnswered = 0;
+    quizActive = true;
+    resultsPanel.style.display = 'none';
+    clearHighlights();
+    updateScore();
+    nextQuestion();
+});
+
+function nextQuestion() {
+    waitingForNext = false;
+    clearHighlights();
+    feedbackEl.textContent = '';
+    feedbackEl.className = '';
+    skipBtn.style.display = 'none';
+
+    if (quizQueue.length === 0) {
+        endRound();
+        return;
+    }
+
+    currentQ = quizQueue.pop();
+    countryNameEl.textContent = currentQ.name;
+    questionCard.style.display = 'block';
+    updateProgress();
+}
+
+function handleMapClick(e) {
+    if (!quizActive || waitingForNext) return;
+    const clickedCode = e.features[0].properties.ADM0_A3;
+    const correct = clickedCode === currentQ.code;
+
+    totalAnswered++;
+
+    if (correct) {
+        correctCount++;
+        feedbackEl.textContent = '✓ Correct!';
+        feedbackEl.className = 'correct';
+        const feats = getFeaturesForCode(clickedCode);
+        setSourceFeatures('highlight-correct', feats);
+        results.push({ name: currentQ.name, code: currentQ.code, correct: true });
+        waitingForNext = true;
+        updateScore();
+        setTimeout(() => { nextQuestion(); }, 1200);
+    } else {
+        feedbackEl.textContent = '✗ Wrong — try again, or skip to see the answer';
+        feedbackEl.className = 'wrong';
+        const feats = getFeaturesForCode(clickedCode);
+        setSourceFeatures('highlight-wrong', feats);
+        skipBtn.style.display = 'inline-block';
+    }
+}
+
+skipBtn.addEventListener('click', () => {
+    // Reveal correct country
+    const correctFeats = getFeaturesForCode(currentQ.code);
+    setSourceFeatures('highlight-reveal', correctFeats);
+    feedbackEl.textContent = `→ That's ${currentQ.name}`;
+    feedbackEl.className = 'wrong';
+    missedQueue.push(currentQ);
+    results.push({ name: currentQ.name, code: currentQ.code, correct: false });
+    totalAnswered++;
+    skipBtn.style.display = 'none';
+    waitingForNext = true;
+    updateScore();
+    setTimeout(() => { nextQuestion(); }, 2200);
+});
+
+function updateScore() {
+    scoreDisplay.textContent = `${correctCount} / ${totalAnswered}`;
+}
+
+function updateProgress() {
+    const total = quizQueue.length + totalAnswered + 1; // +1 for current
+    const done = totalAnswered;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    progressBarInner.style.width = pct + '%';
+    progressText.textContent = `${quizQueue.length + 1} remaining`;
+}
+
+function endRound() {
+    quizActive = false;
+    questionCard.style.display = 'none';
+    clearHighlights();
+
+    const pct = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+    finalScoreBig.textContent = pct + '%';
+
+    // Build breakdown
+    let html = '';
+    results.forEach(r => {
+        html += `<div class="result-row">
+            <span class="country">${r.name}</span>
+            <span class="${r.correct ? 'status-ok' : 'status-bad'}">${r.correct ? '✓' : '✗'}</span>
+        </div>`;
+    });
+    resultsBreakdown.innerHTML = html;
+
+    retryBtn.disabled = missedQueue.length === 0;
+    resultsPanel.style.display = 'flex';
+}
+
+retryBtn.addEventListener('click', () => {
+    if (missedQueue.length === 0) return;
+    quizQueue = shuffle([...missedQueue]);
+    missedQueue = [];
+    results = [];
+    correctCount = 0;
+    totalAnswered = 0;
+    quizActive = true;
+    resultsPanel.style.display = 'none';
+    clearHighlights();
+    updateScore();
+    nextQuestion();
+});
+
+newContinentBtn.addEventListener('click', () => {
+    quizActive = false;
+    resultsPanel.style.display = 'none';
+    questionCard.style.display = 'none';
+    clearHighlights();
+    correctCount = 0;
+    totalAnswered = 0;
+    updateScore();
+    progressBarInner.style.width = '0%';
+    progressText.textContent = '— countries remaining';
+});
+</script>
+</body>
+</html>
