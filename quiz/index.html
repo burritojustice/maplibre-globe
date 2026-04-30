@@ -19,10 +19,9 @@
         }
 
         html, body, #map { height: 100%; }
-
         #map { position: absolute; inset: 0; }
 
-        /* HUD overlay */
+        /* ── HUD ── */
         #hud {
             position: fixed;
             top: 0; left: 0; right: 0;
@@ -45,7 +44,6 @@
             flex-direction: column;
             justify-content: center;
         }
-
         #title-block h1 {
             font-family: 'Bebas Neue', sans-serif;
             font-size: 28px;
@@ -53,7 +51,6 @@
             color: #f0e040;
             line-height: 1;
         }
-
         #title-block span {
             font-size: 9px;
             letter-spacing: 2px;
@@ -70,14 +67,12 @@
             justify-content: center;
             min-width: 120px;
         }
-
         #score-block .label {
             font-size: 9px;
             letter-spacing: 2px;
             color: #888;
             text-transform: uppercase;
         }
-
         #score-display {
             font-family: 'Bebas Neue', sans-serif;
             font-size: 32px;
@@ -93,7 +88,6 @@
             justify-content: center;
             min-width: 160px;
         }
-
         #progress-block .label {
             font-size: 9px;
             letter-spacing: 2px;
@@ -101,20 +95,17 @@
             text-transform: uppercase;
             margin-bottom: 4px;
         }
-
         #progress-bar-outer {
             height: 8px;
             background: #222;
             border: 1px solid #444;
         }
-
         #progress-bar-inner {
             height: 100%;
             background: #f0e040;
             transition: width 0.4s ease;
             width: 0%;
         }
-
         #progress-text {
             font-size: 10px;
             color: #888;
@@ -128,7 +119,6 @@
             gap: 10px;
             flex: 1;
         }
-
         #continent-select-block .label {
             font-size: 9px;
             letter-spacing: 2px;
@@ -136,7 +126,6 @@
             text-transform: uppercase;
             white-space: nowrap;
         }
-
         #continent-select {
             background: #111;
             color: #f0e040;
@@ -147,7 +136,6 @@
             cursor: pointer;
             outline: none;
         }
-
         #continent-select:hover { border-color: #f0e040; }
 
         #start-btn {
@@ -163,11 +151,10 @@
             transition: background 0.15s;
             pointer-events: all;
         }
-
         #start-btn:hover { background: #fff; }
         #start-btn:disabled { background: #444; color: #666; cursor: not-allowed; }
 
-        /* Question card */
+        /* ── Question card ── */
         #question-card {
             position: fixed;
             bottom: 30px;
@@ -178,11 +165,10 @@
             border: 2px solid #f0e040;
             padding: 20px 32px;
             min-width: 340px;
-            max-width: 480px;
+            max-width: 520px;
             text-align: center;
             display: none;
         }
-
         #question-label {
             font-size: 9px;
             letter-spacing: 3px;
@@ -190,7 +176,6 @@
             text-transform: uppercase;
             margin-bottom: 8px;
         }
-
         #country-name {
             font-family: 'Bebas Neue', sans-serif;
             font-size: 42px;
@@ -198,23 +183,24 @@
             letter-spacing: 2px;
             line-height: 1;
         }
-
         #feedback {
             margin-top: 10px;
             font-size: 13px;
             min-height: 20px;
             letter-spacing: 1px;
-            transition: color 0.2s;
         }
-
         #feedback.correct { color: #50e080; }
-        #feedback.wrong { color: #e05050; }
+        #feedback.wrong   { color: #e05050; }
+        #feedback.info    { color: #f0e040; }
 
-        #skip-btn {
+        #action-btns {
+            display: none;
+            gap: 10px;
             margin-top: 12px;
+            justify-content: center;
+        }
+        .action-btn {
             background: transparent;
-            color: #666;
-            border: 1px solid #333;
             font-family: 'Space Mono', monospace;
             font-size: 10px;
             letter-spacing: 1px;
@@ -222,87 +208,140 @@
             cursor: pointer;
             transition: all 0.15s;
         }
+        #try-again-btn {
+            color: #f0e040;
+            border: 1px solid #f0e040;
+        }
+        #try-again-btn:hover { background: #f0e04022; }
+        #skip-btn {
+            color: #666;
+            border: 1px solid #333;
+        }
         #skip-btn:hover { border-color: #888; color: #aaa; }
-        #skip-btn { display: none; }
 
-        /* Results panel */
+        /* ── Small country pulse marker ── */
+        .small-country-marker {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #f0e040;
+            border: 2px solid #0a0a0f;
+            cursor: pointer;
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(240,224,64,0.8); }
+            50%       { box-shadow: 0 0 0 9px rgba(240,224,64,0); }
+        }
+
+        /* ── Results panel ── */
         #results-panel {
             position: fixed;
             inset: 0;
             z-index: 200;
-            background: rgba(10,10,15,0.92);
+            background: rgba(10,10,15,0.94);
             display: none;
             align-items: center;
             justify-content: center;
         }
-
         #results-inner {
             background: #0a0a0f;
             border: 2px solid #f0e040;
-            padding: 40px 48px;
-            max-width: 440px;
-            width: 90%;
+            padding: 28px 36px;
+            width: min(860px, 94vw);
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
             text-align: center;
         }
-
         #results-inner h2 {
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 52px;
+            font-size: 48px;
             color: #f0e040;
             letter-spacing: 4px;
-            margin-bottom: 4px;
+            line-height: 1;
         }
-
         #results-inner .sub {
             font-size: 10px;
             letter-spacing: 2px;
             color: #888;
             text-transform: uppercase;
-            margin-bottom: 24px;
+            margin: 4px 0 14px;
         }
-
+        #results-top {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 14px;
+            flex-shrink: 0;
+        }
         #final-score-big {
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 88px;
+            font-size: 72px;
             line-height: 1;
             color: #f0e040;
         }
-
-        #results-breakdown {
-            margin: 16px 0 24px;
-            font-size: 12px;
-            color: #aaa;
-            line-height: 1.8;
+        #results-legend {
+            font-size: 11px;
+            color: #999;
+            text-align: left;
+            line-height: 2.2;
         }
+        #results-legend .leg-icon { display: inline-block; width: 22px; }
 
-        .result-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #1a1a1a; }
-        .result-row .country { text-align: left; }
-        .result-row .status-ok { color: #50e080; }
-        .result-row .status-bad { color: #e05050; }
+        /* Scrollable two-column breakdown */
+        #results-breakdown-wrap {
+            overflow-y: auto;
+            flex: 1;
+            min-height: 0;
+            border: 1px solid #1e1e1e;
+            margin-bottom: 14px;
+        }
+        #results-breakdown {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 12px;
+            border-bottom: 1px solid #181818;
+            font-size: 11px;
+        }
+        .result-row:nth-child(odd)  { border-right: 1px solid #181818; }
+        .result-row .country        { text-align: left; color: #ccc; }
+        .status-ok   { color: #50e080; font-size: 15px; }
+        .status-warn { color: #f0e040; font-size: 15px; }
+        .status-skip { color: #777;    font-size: 15px; }
 
+        #results-btns {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            flex-shrink: 0;
+        }
         #retry-btn, #new-continent-btn {
-            display: inline-block;
             background: transparent;
             border: 2px solid #f0e040;
             color: #f0e040;
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 22px;
+            font-size: 20px;
             letter-spacing: 2px;
             padding: 10px 28px;
             cursor: pointer;
-            margin: 0 6px;
             transition: all 0.15s;
         }
-
         #retry-btn:hover, #new-continent-btn:hover {
             background: #f0e040;
             color: #0a0a0f;
         }
-
         #retry-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        #retry-btn:disabled:hover { background: transparent; color: #f0e040; }
 
-        /* Map overlays (maplibre attribution) */
-        .maplibregl-ctrl-bottom-right { display: none; }
+        .maplibregl-ctrl-bottom-right,
         .maplibregl-ctrl-bottom-left { display: none; }
     </style>
 </head>
@@ -348,7 +387,10 @@
     <div id="question-label">Find this country on the map</div>
     <div id="country-name">—</div>
     <div id="feedback"></div>
-    <button id="skip-btn">skip</button>
+    <div id="action-btns">
+        <button class="action-btn" id="try-again-btn">try again</button>
+        <button class="action-btn" id="skip-btn">skip (give up)</button>
+    </div>
 </div>
 
 <!-- Results -->
@@ -356,15 +398,58 @@
     <div id="results-inner">
         <h2>Round Complete</h2>
         <div class="sub">Here's how you did</div>
-        <div id="final-score-big">0%</div>
-        <div id="results-breakdown"></div>
-        <button id="retry-btn">Retry Missed</button>
-        <button id="new-continent-btn">New Quiz</button>
+        <div id="results-top">
+            <div id="final-score-big">0%</div>
+            <div id="results-legend">
+                <div><span class="leg-icon status-ok">✓</span> Got it first try</div>
+                <div><span class="leg-icon status-warn">?</span> Eventually got it</div>
+                <div><span class="leg-icon status-skip">→</span> Skipped / gave up</div>
+            </div>
+        </div>
+        <div id="results-breakdown-wrap">
+            <div id="results-breakdown"></div>
+        </div>
+        <div id="results-btns">
+            <button id="retry-btn">Retry Skipped</button>
+            <button id="new-continent-btn">New Quiz</button>
+        </div>
     </div>
 </div>
 
 <script>
-// ─── CSV data (embedded) ───────────────────────────────────────────────────
+// ─── Hardcoded centroids for small / island nations ─────────────────────────
+const SMALL_COUNTRY_CENTROIDS = {
+    AND: [1.60,  42.55],   // Andorra
+    ASM: [-170.69, -14.27],// American Samoa
+    ATG: [-61.80, 17.07],  // Antigua and Barbuda
+    BHR: [50.55,  26.00],  // Bahrain
+    BLZ: [-88.49, 17.19],  // Belize (narrow)
+    BRB: [-59.55, 13.17],  // Barbados
+    BRN: [114.73,  4.54],  // Brunei
+    COM: [43.87, -11.87],  // Comoros
+    CPV: [-24.01, 16.00],  // Cape Verde
+    CYP: [33.43,  35.13],  // Cyprus
+    DJI: [42.59,  11.83],  // Djibouti
+    FJI: [178.06,-18.17],  // Fiji
+    GMB: [-15.31, 13.44],  // Gambia
+    GRD: [-61.68, 12.12],  // Grenada
+    ISL: [-19.02, 64.96],  // Iceland
+    JAM: [-77.30, 18.11],  // Jamaica
+    KWT: [47.48,  29.34],  // Kuwait
+    LBN: [35.86,  33.85],  // Lebanon
+    LUX: [6.13,   49.81],  // Luxembourg
+    MDV: [73.22,   4.17],  // Maldives
+    MLT: [14.51,  35.90],  // Malta
+    MUS: [57.55, -20.29],  // Mauritius
+    QAT: [51.18,  25.35],  // Qatar
+    SGP: [103.82,  1.35],  // Singapore
+    SLB: [160.15, -9.43],  // Solomon Islands
+    STP: [6.61,    0.19],  // Sao Tome and Principe
+    TTO: [-61.22, 10.65],  // Trinidad and Tobago
+    WSM: [-172.10,-13.75], // Samoa
+};
+
+// ─── CSV (embedded) ──────────────────────────────────────────────────────────
 const CSV = `Continent_Name,Continent_Code,Country_Name,Two_Letter_Country_Code,Three_Letter_Country_Code,Country_Number
 Asia,AS,"Afghanistan, Islamic Republic of",AF,AFG,4
 Europe,EU,"Albania, Republic of",AL,ALB,8
@@ -537,14 +622,13 @@ Oceania,OC,"Samoa, Independent State of",WS,WSM,882
 Asia,AS,Yemen,YE,YEM,887
 Africa,AF,"Zambia, Republic of",ZM,ZMB,894`;
 
-// ─── Parse CSV ─────────────────────────────────────────────────────────────
+// ─── Parse CSV ───────────────────────────────────────────────────────────────
 function parseCSV(text) {
     const lines = text.trim().split('\n');
     const headers = lines[0].split(',');
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
         const row = {};
-        // handle quoted fields
         const line = lines[i];
         const fields = [];
         let cur = '', inQ = false;
@@ -561,8 +645,6 @@ function parseCSV(text) {
 }
 
 const allCountryData = parseCSV(CSV);
-
-// Deduplicate by three-letter code (some appear in both Asia+Europe)
 const seen = new Set();
 const countries = allCountryData.filter(r => {
     const code = r['Three_Letter_Country_Code'];
@@ -571,50 +653,46 @@ const countries = allCountryData.filter(r => {
     return true;
 });
 
-// Clean display names
 function displayName(raw) {
-    // "Afghanistan, Islamic Republic of" → "Afghanistan"
-    // But keep "Bosnia and Herzegovina", "Cote d'Ivoire" etc.
     const m = raw.match(/^([^,]+),\s(.+)$/);
-    if (m) {
-        // Check if the suffix is geographic (keep full name for compound names)
-        const first = m[1].trim();
-        return first;
-    }
-    return raw;
+    return m ? m[1].trim() : raw;
 }
 
-// ─── Quiz state ─────────────────────────────────────────────────────────────
-let quizQueue = [];         // [{country, code}, ...]
-let missedQueue = [];
-let currentQ = null;
-let correctCount = 0;
-let totalAnswered = 0;
-let quizActive = false;
-let waitingForNext = false;  // after answer, before next click
-let results = [];            // {name, code, correct}
+// ─── Quiz state ───────────────────────────────────────────────────────────────
+let quizQueue     = [];
+let currentQ      = null;
+let correctCount  = 0;
+let totalAnswered  = 0;
+let quizActive    = false;
+let waitingForNext = false;
+let wrongThisQ    = false;   // had at least one wrong click this question
+let results       = [];      // {name, code, status: 'correct'|'eventual'|'skipped'}
+let skippedQueue  = [];
+let activeMarker  = null;
 
-// ─── UI refs ────────────────────────────────────────────────────────────────
-const continentSelect = document.getElementById('continent-select');
-const startBtn = document.getElementById('start-btn');
-const questionCard = document.getElementById('question-card');
-const countryNameEl = document.getElementById('country-name');
-const feedbackEl = document.getElementById('feedback');
-const skipBtn = document.getElementById('skip-btn');
-const scoreDisplay = document.getElementById('score-display');
+// ─── UI refs ─────────────────────────────────────────────────────────────────
+const continentSelect  = document.getElementById('continent-select');
+const startBtn         = document.getElementById('start-btn');
+const questionCard     = document.getElementById('question-card');
+const countryNameEl    = document.getElementById('country-name');
+const feedbackEl       = document.getElementById('feedback');
+const actionBtns       = document.getElementById('action-btns');
+const tryAgainBtn      = document.getElementById('try-again-btn');
+const skipBtn          = document.getElementById('skip-btn');
+const scoreDisplay     = document.getElementById('score-display');
 const progressBarInner = document.getElementById('progress-bar-inner');
-const progressText = document.getElementById('progress-text');
-const resultsPanel = document.getElementById('results-panel');
-const finalScoreBig = document.getElementById('final-score-big');
+const progressText     = document.getElementById('progress-text');
+const resultsPanel     = document.getElementById('results-panel');
+const finalScoreBig    = document.getElementById('final-score-big');
 const resultsBreakdown = document.getElementById('results-breakdown');
-const retryBtn = document.getElementById('retry-btn');
-const newContinentBtn = document.getElementById('new-continent-btn');
+const retryBtn         = document.getElementById('retry-btn');
+const newContinentBtn  = document.getElementById('new-continent-btn');
 
 continentSelect.addEventListener('change', () => {
     startBtn.disabled = !continentSelect.value;
 });
 
-// ─── Map setup ───────────────────────────────────────────────────────────────
+// ─── Map ──────────────────────────────────────────────────────────────────────
 const map = new maplibregl.Map({
     container: 'map',
     style: 'https://demotiles.maplibre.org/style.json',
@@ -626,64 +704,57 @@ const map = new maplibregl.Map({
 
 map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-// Highlighted country sources
-let highlightSource, correctSource, wrongSource;
-
 map.on('style.load', () => {
     map.setProjection({ type: 'globe' });
     map.setLayoutProperty('countries-label', 'visibility', 'none');
 
-    // Source: correct answer flash
-    map.addSource('highlight-correct', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addLayer({
-        id: 'highlight-correct-fill',
-        type: 'fill',
-        source: 'highlight-correct',
-        paint: { 'fill-color': '#50e080', 'fill-opacity': 0.7 }
-    });
-    map.addLayer({
-        id: 'highlight-correct-line',
-        type: 'line',
-        source: 'highlight-correct',
-        paint: { 'line-color': '#50e080', 'line-width': 2 }
-    });
+    // Hover — solid white
+    map.addSource('hover-country', { type: 'geojson', data: emptyFC() });
+    map.addLayer({ id: 'hover-fill', type: 'fill', source: 'hover-country',
+        paint: { 'fill-color': '#ffffff', 'fill-opacity': 1 } });
 
-    // Source: wrong answer flash
-    map.addSource('highlight-wrong', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addLayer({
-        id: 'highlight-wrong-fill',
-        type: 'fill',
-        source: 'highlight-wrong',
-        paint: { 'fill-color': '#e05050', 'fill-opacity': 0.7 }
-    });
-    map.addLayer({
-        id: 'highlight-wrong-line',
-        type: 'line',
-        source: 'highlight-wrong',
-        paint: { 'line-color': '#e05050', 'line-width': 2 }
-    });
+    // Flash correct — solid bright green
+    map.addSource('flash-correct', { type: 'geojson', data: emptyFC() });
+    map.addLayer({ id: 'flash-correct-fill', type: 'fill', source: 'flash-correct',
+        paint: { 'fill-color': '#00ff66', 'fill-opacity': 1 } });
 
-    // Source: "answer reveal" when wrong (show correct in yellow)
-    map.addSource('highlight-reveal', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    map.addLayer({
-        id: 'highlight-reveal-fill',
-        type: 'fill',
-        source: 'highlight-reveal',
-        paint: { 'fill-color': '#f0e040', 'fill-opacity': 0.6 }
-    });
-    map.addLayer({
-        id: 'highlight-reveal-line',
-        type: 'line',
-        source: 'highlight-reveal',
-        paint: { 'line-color': '#f0e040', 'line-width': 2 }
-    });
+    // Flash wrong — solid bright red
+    map.addSource('flash-wrong', { type: 'geojson', data: emptyFC() });
+    map.addLayer({ id: 'flash-wrong-fill', type: 'fill', source: 'flash-wrong',
+        paint: { 'fill-color': '#ff2222', 'fill-opacity': 1 } });
 
-    map.on('click', 'countries-fill', handleMapClick);
+    // Reveal after skip — solid yellow + outline
+    map.addSource('reveal-country', { type: 'geojson', data: emptyFC() });
+    map.addLayer({ id: 'reveal-fill', type: 'fill', source: 'reveal-country',
+        paint: { 'fill-color': '#f0e040', 'fill-opacity': 1 } });
+    map.addLayer({ id: 'reveal-line', type: 'line', source: 'reveal-country',
+        paint: { 'line-color': '#f0e040', 'line-width': 2 } });
+
+    // Hover tracking
+    let hoveredCode = null;
+    map.on('mousemove', 'countries-fill', (e) => {
+        if (!quizActive || waitingForNext) return;
+        const code = e.features[0].properties.ADM0_A3;
+        if (code === hoveredCode) return;
+        hoveredCode = code;
+        setSource('hover-country', getFeaturesForCode(code));
+    });
+    map.on('mouseleave', 'countries-fill', () => {
+        hoveredCode = null;
+        setSource('hover-country', []);
+    });
     map.on('mouseenter', 'countries-fill', () => {
         if (quizActive && !waitingForNext) map.getCanvas().style.cursor = 'crosshair';
     });
     map.on('mouseleave', 'countries-fill', () => { map.getCanvas().style.cursor = ''; });
+    map.on('click', 'countries-fill', (e) => {
+        if (!quizActive || waitingForNext) return;
+        handleAnswer(e.features[0].properties.ADM0_A3);
+    });
 });
+
+// ─── Map helpers ──────────────────────────────────────────────────────────────
+function emptyFC() { return { type: 'FeatureCollection', features: [] }; }
 
 function getFeaturesForCode(code) {
     return map.querySourceFeatures('maplibre', {
@@ -692,18 +763,53 @@ function getFeaturesForCode(code) {
     });
 }
 
-function setSourceFeatures(sourceId, features) {
-    map.getSource(sourceId).setData({
+function setSource(sourceId, features) {
+    const src = map.getSource(sourceId);
+    if (!src) return;
+    src.setData({
         type: 'FeatureCollection',
         features: features.map(f => ({ type: 'Feature', geometry: f.geometry, properties: f.properties }))
     });
 }
 
-function clearHighlights() {
-    ['highlight-correct', 'highlight-wrong', 'highlight-reveal'].forEach(s => {
-        if (map.getSource(s)) {
-            map.getSource(s).setData({ type: 'FeatureCollection', features: [] });
+function clearAll() {
+    ['hover-country', 'flash-correct', 'flash-wrong', 'reveal-country'].forEach(s => setSource(s, []));
+}
+
+// Blink a country N times on the given source, call done() when finished
+function blinkCountry(code, sourceId, times, intervalMs, done) {
+    const feats = getFeaturesForCode(code);
+    let count = 0, on = false;
+    const tick = setInterval(() => {
+        on = !on;
+        setSource(sourceId, on ? feats : []);
+        if (++count >= times * 2) {
+            clearInterval(tick);
+            setSource(sourceId, []);
+            if (done) done();
         }
+    }, intervalMs);
+}
+
+// ─── Small country marker ─────────────────────────────────────────────────────
+function removeMarker() {
+    if (activeMarker) { activeMarker.remove(); activeMarker = null; }
+}
+
+function addSmallCountryMarker(code) {
+    removeMarker();
+    const coords = SMALL_COUNTRY_CENTROIDS[code];
+    if (!coords) return;
+    const el = document.createElement('div');
+    el.className = 'small-country-marker';
+    el.title = 'Click here!';
+    activeMarker = new maplibregl.Marker({ element: el, anchor: 'center' })
+        .setLngLat(coords)
+        .addTo(map);
+    el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!quizActive || waitingForNext) return;
+        handleAnswer(code);
     });
 }
 
@@ -717,12 +823,8 @@ function shuffle(arr) {
 }
 
 function buildQueue(continent) {
-    let list;
-    if (continent === 'ALL') {
-        list = countries;
-    } else {
-        list = countries.filter(c => c['Continent_Name'] === continent);
-    }
+    const list = continent === 'ALL' ? countries
+               : countries.filter(c => c['Continent_Name'] === continent);
     return shuffle(list.map(c => ({
         name: displayName(c['Country_Name']),
         code: c['Three_Letter_Country_Code']
@@ -732,75 +834,98 @@ function buildQueue(continent) {
 startBtn.addEventListener('click', () => {
     const continent = continentSelect.value;
     if (!continent) return;
-    quizQueue = buildQueue(continent);
-    missedQueue = [];
-    results = [];
-    correctCount = 0;
+    quizQueue     = buildQueue(continent);
+    skippedQueue  = [];
+    results       = [];
+    correctCount  = 0;
     totalAnswered = 0;
-    quizActive = true;
+    quizActive    = true;
     resultsPanel.style.display = 'none';
-    clearHighlights();
+    clearAll();
+    removeMarker();
     updateScore();
     nextQuestion();
 });
 
 function nextQuestion() {
     waitingForNext = false;
-    clearHighlights();
-    feedbackEl.textContent = '';
-    feedbackEl.className = '';
-    skipBtn.style.display = 'none';
+    wrongThisQ     = false;
+    clearAll();
+    removeMarker();
+    feedbackEl.textContent   = '';
+    feedbackEl.className     = '';
+    actionBtns.style.display = 'none';
 
-    if (quizQueue.length === 0) {
-        endRound();
-        return;
-    }
+    if (quizQueue.length === 0) { endRound(); return; }
 
     currentQ = quizQueue.pop();
-    countryNameEl.textContent = currentQ.name;
+    countryNameEl.textContent  = currentQ.name;
     questionCard.style.display = 'block';
     updateProgress();
-}
 
-function handleMapClick(e) {
-    if (!quizActive || waitingForNext) return;
-    const clickedCode = e.features[0].properties.ADM0_A3;
-    const correct = clickedCode === currentQ.code;
-
-    totalAnswered++;
-
-    if (correct) {
-        correctCount++;
-        feedbackEl.textContent = '✓ Correct!';
-        feedbackEl.className = 'correct';
-        const feats = getFeaturesForCode(clickedCode);
-        setSourceFeatures('highlight-correct', feats);
-        results.push({ name: currentQ.name, code: currentQ.code, correct: true });
-        waitingForNext = true;
-        updateScore();
-        setTimeout(() => { nextQuestion(); }, 1200);
-    } else {
-        feedbackEl.textContent = '✗ Wrong — try again, or skip to see the answer';
-        feedbackEl.className = 'wrong';
-        const feats = getFeaturesForCode(clickedCode);
-        setSourceFeatures('highlight-wrong', feats);
-        skipBtn.style.display = 'inline-block';
+    if (SMALL_COUNTRY_CENTROIDS[currentQ.code]) {
+        addSmallCountryMarker(currentQ.code);
     }
 }
 
+function handleAnswer(clickedCode) {
+    if (!quizActive || waitingForNext) return;
+
+    if (clickedCode === currentQ.code) {
+        // ── CORRECT ──
+        waitingForNext = true;
+        removeMarker();
+        setSource('hover-country', []);
+        blinkCountry(currentQ.code, 'flash-correct', 3, 150, () => {
+            const status = wrongThisQ ? 'eventual' : 'correct';
+            if (status === 'correct') correctCount++;
+            totalAnswered++;
+            results.push({ name: currentQ.name, code: currentQ.code, status });
+            feedbackEl.textContent = wrongThisQ ? '✓ Got it!' : '✓ Correct!';
+            feedbackEl.className   = 'correct';
+            updateScore();
+            setTimeout(nextQuestion, 700);
+        });
+    } else {
+        // ── WRONG ──
+        wrongThisQ = true;
+        setSource('hover-country', []);
+        blinkCountry(clickedCode, 'flash-wrong', 3, 150, () => {
+            feedbackEl.textContent   = '✗ Wrong — try again or give up';
+            feedbackEl.className     = 'wrong';
+            actionBtns.style.display = 'flex';
+            // Restore marker after blink
+            if (SMALL_COUNTRY_CENTROIDS[currentQ.code]) addSmallCountryMarker(currentQ.code);
+        });
+    }
+}
+
+tryAgainBtn.addEventListener('click', () => {
+    actionBtns.style.display = 'none';
+    feedbackEl.textContent   = '';
+    feedbackEl.className     = '';
+    clearAll();
+    if (SMALL_COUNTRY_CENTROIDS[currentQ.code]) addSmallCountryMarker(currentQ.code);
+});
+
 skipBtn.addEventListener('click', () => {
-    // Reveal correct country
-    const correctFeats = getFeaturesForCode(currentQ.code);
-    setSourceFeatures('highlight-reveal', correctFeats);
-    feedbackEl.textContent = `→ That's ${currentQ.name}`;
-    feedbackEl.className = 'wrong';
-    missedQueue.push(currentQ);
-    results.push({ name: currentQ.name, code: currentQ.code, correct: false });
-    totalAnswered++;
-    skipBtn.style.display = 'none';
+    actionBtns.style.display = 'none';
     waitingForNext = true;
+    removeMarker();
+    clearAll();
+
+    setSource('reveal-country', getFeaturesForCode(currentQ.code));
+    // Also place a marker so tiny countries are visible on reveal
+    if (SMALL_COUNTRY_CENTROIDS[currentQ.code]) addSmallCountryMarker(currentQ.code);
+
+    feedbackEl.textContent = `→ That's ${currentQ.name}`;
+    feedbackEl.className   = 'info';
+
+    results.push({ name: currentQ.name, code: currentQ.code, status: 'skipped' });
+    skippedQueue.push(currentQ);
+    totalAnswered++;
     updateScore();
-    setTimeout(() => { nextQuestion(); }, 2200);
+    setTimeout(nextQuestion, 2400);
 });
 
 function updateScore() {
@@ -808,9 +933,8 @@ function updateScore() {
 }
 
 function updateProgress() {
-    const total = quizQueue.length + totalAnswered + 1; // +1 for current
-    const done = totalAnswered;
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const total = quizQueue.length + totalAnswered + 1;
+    const pct   = total > 0 ? Math.round((totalAnswered / total) * 100) : 0;
     progressBarInner.style.width = pct + '%';
     progressText.textContent = `${quizQueue.length + 1} remaining`;
 }
@@ -818,35 +942,39 @@ function updateProgress() {
 function endRound() {
     quizActive = false;
     questionCard.style.display = 'none';
-    clearHighlights();
+    clearAll();
+    removeMarker();
 
-    const pct = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
+    // Score = first-try corrects only
+    const firstTry = results.filter(r => r.status === 'correct').length;
+    const pct = totalAnswered > 0 ? Math.round((firstTry / totalAnswered) * 100) : 0;
     finalScoreBig.textContent = pct + '%';
 
-    // Build breakdown
     let html = '';
     results.forEach(r => {
-        html += `<div class="result-row">
-            <span class="country">${r.name}</span>
-            <span class="${r.correct ? 'status-ok' : 'status-bad'}">${r.correct ? '✓' : '✗'}</span>
-        </div>`;
+        const icon = r.status === 'correct'  ? '<span class="status-ok">✓</span>'
+                   : r.status === 'eventual'  ? '<span class="status-warn">?</span>'
+                   :                            '<span class="status-skip">→</span>';
+        html += `<div class="result-row"><span class="country">${r.name}</span>${icon}</div>`;
     });
+    if (results.length % 2 !== 0) html += `<div class="result-row"></div>`;
     resultsBreakdown.innerHTML = html;
 
-    retryBtn.disabled = missedQueue.length === 0;
+    retryBtn.disabled = skippedQueue.length === 0;
     resultsPanel.style.display = 'flex';
 }
 
 retryBtn.addEventListener('click', () => {
-    if (missedQueue.length === 0) return;
-    quizQueue = shuffle([...missedQueue]);
-    missedQueue = [];
-    results = [];
-    correctCount = 0;
+    if (skippedQueue.length === 0) return;
+    quizQueue     = shuffle([...skippedQueue]);
+    skippedQueue  = [];
+    results       = [];
+    correctCount  = 0;
     totalAnswered = 0;
-    quizActive = true;
+    quizActive    = true;
     resultsPanel.style.display = 'none';
-    clearHighlights();
+    clearAll();
+    removeMarker();
     updateScore();
     nextQuestion();
 });
@@ -855,8 +983,9 @@ newContinentBtn.addEventListener('click', () => {
     quizActive = false;
     resultsPanel.style.display = 'none';
     questionCard.style.display = 'none';
-    clearHighlights();
-    correctCount = 0;
+    clearAll();
+    removeMarker();
+    correctCount  = 0;
     totalAnswered = 0;
     updateScore();
     progressBarInner.style.width = '0%';
