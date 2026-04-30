@@ -221,13 +221,17 @@
 
         /* ── Small country markers ── */
         .small-country-marker {
-            width: 10px;
-            height: 10px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            border: 2px solid #ffffff;
+            background: transparent;
+            border: 3px solid #d4d4d4; /* default; overridden per-marker by JS */
             cursor: pointer;
-            background: #6a9fd8; /* default; overridden per-marker by JS */
-            transition: background 0.1s;
+            box-sizing: border-box;
+            pointer-events: all;
+            /* sit behind the country polygon tiles */
+            position: relative;
+            z-index: 0;
         }
 
         /* ── Results panel ── */
@@ -465,36 +469,34 @@
 </div>
 
 <script>
-// ─── Hardcoded centroids for small / island nations ─────────────────────────
+// ─── Continent bounding boxes [west, south, east, north] ────────────────────
+const CONTINENT_BOUNDS = {
+    'Africa':        [[-20, -35],  [52,  38]],
+    'Asia':          [[ 25, -12],  [145, 55]],
+    'Europe':        [[-25,  34],  [ 45, 72]],
+    'North America': [[-170,  5],  [-50, 72]],
+    'South America': [[-82, -56],  [-34, 13]],
+    'Oceania':       [[ 110, -48], [180, 22]],
+};
+
+// ─── Centroids ONLY for true micro-islands / archipelagos that are nearly
+//     impossible to click as polygons at global zoom. Mainland countries,
+//     peninsula nations, and islands large enough to register a click are excluded.
 const SMALL_COUNTRY_CENTROIDS = {
-    AND: [1.60,  42.55],   // Andorra
-    ASM: [-170.69, -14.27],// American Samoa
-    ATG: [-61.80, 17.07],  // Antigua and Barbuda
-    BHR: [50.55,  26.00],  // Bahrain
-    BLZ: [-88.49, 17.19],  // Belize (narrow)
-    BRB: [-59.55, 13.17],  // Barbados
-    BRN: [114.73,  4.54],  // Brunei
-    COM: [43.87, -11.87],  // Comoros
-    CPV: [-24.01, 16.00],  // Cape Verde
-    CYP: [33.43,  35.13],  // Cyprus
-    DJI: [42.59,  11.83],  // Djibouti
-    FJI: [178.06,-18.17],  // Fiji
-    GMB: [-15.31, 13.44],  // Gambia
-    GRD: [-61.68, 12.12],  // Grenada
-    ISL: [-19.02, 64.96],  // Iceland
-    JAM: [-77.30, 18.11],  // Jamaica
-    KWT: [47.48,  29.34],  // Kuwait
-    LBN: [35.86,  33.85],  // Lebanon
-    LUX: [6.13,   49.81],  // Luxembourg
-    MDV: [73.22,   4.17],  // Maldives
-    MLT: [14.51,  35.90],  // Malta
-    MUS: [57.55, -20.29],  // Mauritius
-    QAT: [51.18,  25.35],  // Qatar
-    SGP: [103.82,  1.35],  // Singapore
-    SLB: [160.15, -9.43],  // Solomon Islands
-    STP: [6.61,    0.19],  // Sao Tome and Principe
-    TTO: [-61.22, 10.65],  // Trinidad and Tobago
-    WSM: [-172.10,-13.75], // Samoa
+    ASM: [-170.69, -14.27], // American Samoa
+    ATG: [ -61.80,  17.07], // Antigua and Barbuda
+    BRB: [ -59.55,  13.17], // Barbados
+    COM: [  43.87, -11.87], // Comoros
+    CPV: [ -24.01,  16.00], // Cape Verde
+    FJI: [ 178.06, -18.17], // Fiji
+    GRD: [ -61.68,  12.12], // Grenada
+    MDV: [  73.22,   4.17], // Maldives
+    MLT: [  14.51,  35.90], // Malta
+    MUS: [  57.55, -20.29], // Mauritius
+    SGP: [ 103.82,   1.35], // Singapore
+    SLB: [ 160.15,  -9.43], // Solomon Islands
+    STP: [   6.61,   0.19], // Sao Tome and Principe
+    WSM: [-172.10, -13.75], // Samoa
 };
 
 // ─── CSV (embedded) ──────────────────────────────────────────────────────────
@@ -763,9 +765,22 @@ function applyMapContinentFilter(continent) {
     });
 }
 
+function zoomToContinent(continent) {
+    if (!continent || continent === 'ALL') {
+        map.flyTo({ center: [10, 20], zoom: 1.5, duration: 1200 });
+        return;
+    }
+    const bounds = CONTINENT_BOUNDS[continent];
+    if (!bounds) return;
+    map.fitBounds(bounds, { padding: 40, duration: 1200, maxZoom: 5 });
+}
+
 continentSelect.addEventListener('change', () => {
     startBtn.disabled = !continentSelect.value;
-    if (map.isStyleLoaded()) applyMapContinentFilter(continentSelect.value);
+    if (map.isStyleLoaded()) {
+        applyMapContinentFilter(continentSelect.value);
+        zoomToContinent(continentSelect.value);
+    }
 });
 
 // ─── Map ──────────────────────────────────────────────────────────────────────
@@ -878,27 +893,37 @@ const allMarkers = {};
 const COUNTRY_FILL_COLOR = '#d4d4d4'; // approximation of the basemap's country color
 
 function buildAllMarkers() {
-    // Try to read the actual fill color from the map style
-    let fillColor = COUNTRY_FILL_COLOR;
+    // Read the actual fill color from the map style for the border
+    let borderColor = COUNTRY_FILL_COLOR;
     try {
         const paint = map.getPaintProperty('countries-fill', 'fill-color');
-        if (typeof paint === 'string') fillColor = paint;
+        if (typeof paint === 'string') borderColor = paint;
     } catch(e) {}
 
     Object.entries(SMALL_COUNTRY_CENTROIDS).forEach(([code, coords]) => {
         const el = document.createElement('div');
         el.className = 'small-country-marker';
-        el.style.background = fillColor;
+        el.style.borderColor = borderColor;
         el.dataset.code = code;
         el.addEventListener('click', (e) => {
             e.stopPropagation();
             if (!quizActive || waitingForNext) return;
             handleAnswer(code);
         });
+        // Use z-index -1 on the MapLibre marker wrapper so it sits under country polygons
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat(coords)
             .addTo(map);
-        allMarkers[code] = { marker, el };
+        // Push the wrapper element behind the tile layers
+        if (marker.getElement().parentElement) {
+            marker.getElement().parentElement.style.zIndex = '0';
+        }
+        // Also set it after add, when the wrapper exists
+        setTimeout(() => {
+            const wrapper = marker.getElement();
+            if (wrapper) wrapper.style.zIndex = '0';
+        }, 0);
+        allMarkers[code] = { marker, el, borderColor };
     });
 }
 
@@ -910,18 +935,14 @@ function blinkMarker(code, color, times, intervalMs) {
     const entry = allMarkers[code];
     if (!entry) return;
     const el = entry.el;
-    let fillColor = COUNTRY_FILL_COLOR;
-    try {
-        const paint = map.getPaintProperty('countries-fill', 'fill-color');
-        if (typeof paint === 'string') fillColor = paint;
-    } catch(e) {}
+    const originalBorder = entry.borderColor || COUNTRY_FILL_COLOR;
     let count = 0, on = false;
     const tick = setInterval(() => {
         on = !on;
-        el.style.background = on ? color : fillColor;
+        el.style.borderColor = on ? color : originalBorder;
         if (++count >= times * 2) {
             clearInterval(tick);
-            el.style.background = fillColor;
+            el.style.borderColor = originalBorder;
         }
     }, intervalMs);
 }
@@ -957,6 +978,7 @@ startBtn.addEventListener('click', () => {
     clearAll();
     clearActiveMarker();
     applyMapContinentFilter(continent);
+    zoomToContinent(continent);
     updateScore();
     nextQuestion();
 });
@@ -1110,6 +1132,7 @@ newContinentBtn.addEventListener('click', () => {
     progressBarInner.style.width = '0%';
     progressText.textContent = '— countries remaining';
     applyMapContinentFilter(null); // show all countries again
+    zoomToContinent(null);         // zoom back to world view
 });
 </script>
 </body>
