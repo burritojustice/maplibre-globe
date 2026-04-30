@@ -241,8 +241,8 @@
 
         /* ── Small country markers ── */
         .small-country-marker {
-            width: 12px;
-            height: 12px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             background: transparent;
             border: 2px solid #d4d4d4; /* overridden per-marker by JS */
@@ -918,114 +918,71 @@ function blinkCountry(code, sourceId, times, intervalMs, done) {
     }, intervalMs);
 }
 
-// ─── Small country markers — auto-detected by pixel area ────────────────────
-// Fallback centroids for countries whose polygons are absent from the tile data
-// at low zoom (too small to appear at all). Used only if querySourceFeatures
-// returns nothing for that code.
-const FALLBACK_CENTROIDS = {
-    ATG: [ -61.80,  17.07], // Antigua and Barbuda
-    BRB: [ -59.55,  13.17], // Barbados
-    COM: [  43.87, -11.87], // Comoros
-    CPV: [ -24.01,  16.00], // Cape Verde
-    GRD: [ -61.68,  12.12], // Grenada
-    MDV: [  73.22,   4.17], // Maldives
-    MLT: [  14.51,  35.90], // Malta
-    MUS: [  57.55, -20.29], // Mauritius
-    SGP: [ 103.82,   1.35], // Singapore
-    SLB: [ 160.15,  -9.43], // Solomon Islands
-    STP: [   6.61,   0.19], // Sao Tome and Principe
-    WSM: [-172.10, -13.75], // Samoa
-    ASM: [-170.69, -14.27], // American Samoa
-    FJI: [ 178.06, -18.17], // Fiji
-    BHS: [ -77.39,  25.03], // Bahamas
-    JAM: [ -77.30,  18.11], // Jamaica
-    TTO: [ -61.22,  10.65], // Trinidad and Tobago
-    DMA: [ -61.37,  15.42], // Dominica
-    KNA: [ -62.68,  17.35], // Saint Kitts and Nevis
-    LCA: [ -60.98,  13.91], // Saint Lucia
-    VCT: [ -61.20,  12.98], // Saint Vincent and the Grenadines
-    // Africa additions
-    CPV: [ -24.01,  16.00], // Cape Verde
-    GNB: [ -15.18,  11.86], // Guinea-Bissau (small coast)
-    STP: [   6.61,   0.19], // Sao Tome and Principe
-    SYC: [  55.49,  -4.68], // Seychelles
-    // Asia additions
-    MDV: [  73.22,   4.17], // Maldives
-    PSE: [  35.30,  31.90], // Palestine (West Bank centroid)
-    TLS: [ 125.73,  -8.87], // Timor-Leste
-    // Europe additions
-    LIE: [   9.55,  47.17], // Liechtenstein
-    MCO: [   7.41,  43.74], // Monaco
-    SMR: [  12.46,  43.94], // San Marino
-    // Oceania additions
-    FSM: [ 158.18,   6.92], // Micronesia
-    KIR: [ -157.36,  1.87], // Kiribati (central Pacific)
-    MHL: [ 171.18,   7.11], // Marshall Islands
-    NRU: [ 166.93,  -0.52], // Nauru
-    PLW: [ 134.49,   7.51], // Palau
-    TON: [-175.20, -21.18], // Tonga
-    TUV: [ 179.21,  -8.52], // Tuvalu
-    VUT: [ 166.96, -15.38], // Vanuatu
-};
+// ─── Small-country dot markers ───────────────────────────────────────────────
+// Source of truth: countries whose land area (km²) or extreme dispersal makes
+// them hard or impossible to click at continent zoom (~z3-4).
+// Threshold reasoning:
+//   • Compact countries ≤ 1,000 km²  → always need a dot (Malta, Grenada, etc.)
+//   • Dispersed archipelagos ≤ 20,000 km² → need a dot (Maldives, Kiribati)
+//   • Landlocked enclaves regardless of size → need a dot (Andorra, Monaco, San Marino)
+//   • Entries marked dispersed:true are archipelagos where the dot sits at the
+//     geographic/political centre, not the centroid of the bounding box
+//
+// Format: code → [lng, lat, km², notes]
+const DOT_COUNTRIES = {
+    // ── North America / Caribbean ──────────────────────────────────────────
+    ATG: [ -61.80,  17.07,    443, 'Antigua & Barbuda'],
+    BHS: [ -77.39,  25.03,  13880, 'Bahamas — dispersed archipelago'],
+    BRB: [ -59.55,  13.17,    430, 'Barbados'],
+    DMA: [ -61.37,  15.42,    751, 'Dominica'],
+    GRD: [ -61.68,  12.12,    344, 'Grenada'],
+    KNA: [ -62.68,  17.35,    261, 'Saint Kitts & Nevis'],
+    LCA: [ -60.98,  13.91,    616, 'Saint Lucia'],
+    VCT: [ -61.20,  12.98,    389, 'Saint Vincent & the Grenadines'],
+    TTO: [ -61.22,  10.65,   5131, 'Trinidad & Tobago'],
+    JAM: [ -77.30,  18.11,  10991, 'Jamaica — small at NA zoom'],
 
-// Pixel-area threshold below which a dot is shown (at the current zoom).
-// Tuned so that countries like Jamaica (~400 px²) and Malta get dots
-// but Panama, Lebanon, etc. (~800+ px²) do not.
-const PIXEL_AREA_THRESHOLD = 500;
+    // ── Europe ─────────────────────────────────────────────────────────────
+    AND: [   1.60,  42.55,    468, 'Andorra — landlocked enclave'],
+    LIE: [   9.55,  47.17,    160, 'Liechtenstein — landlocked enclave'],
+    LUX: [   6.13,  49.81,   2586, 'Luxembourg — small, often missed'],
+    MCO: [   7.41,  43.74,      2, 'Monaco — essentially no polygon'],
+    MLT: [  14.51,  35.90,    316, 'Malta'],
+    SMR: [  12.46,  43.94,     61, 'San Marino — landlocked enclave'],
+
+    // ── Africa ─────────────────────────────────────────────────────────────
+    COM: [  43.87, -11.87,   1861, 'Comoros'],
+    CPV: [ -24.01,  16.00,   4033, 'Cape Verde — offshore archipelago'],
+    MUS: [  57.55, -20.29,   2040, 'Mauritius — isolated island'],
+    STP: [   6.61,   0.19,    964, 'São Tomé & Príncipe'],
+    SYC: [  55.49,  -4.68,    455, 'Seychelles — scattered far offshore'],
+
+    // ── Asia ───────────────────────────────────────────────────────────────
+    BHR: [  50.55,  26.00,    765, 'Bahrain — small island'],
+    MDV: [  73.22,   4.17,    298, 'Maldives — atolls across 800km'],
+    PSE: [  35.30,  31.90,   6220, 'Palestine — West Bank centroid'],
+    SGP: [ 103.82,   1.35,    733, 'Singapore'],
+
+    // ── Oceania ────────────────────────────────────────────────────────────
+    ASM: [-170.69, -14.27,    199, 'American Samoa'],
+    FJI: [ 178.06, -18.17,  18274, 'Fiji — scattered'],
+    FSM: [ 158.18,   6.92,    702, 'Micronesia — 4 groups, 2.6M km² ocean'],
+    KIR: [-157.36,   1.87,    811, 'Kiribati — 3 groups, 3.5M km² ocean'],
+    MHL: [ 171.18,   7.11,    181, 'Marshall Islands — very dispersed'],
+    NRU: [ 166.93,  -0.52,     21, 'Nauru — almost certainly no polygon'],
+    PLW: [ 134.49,   7.51,    459, 'Palau'],
+    SLB: [ 160.15,  -9.43,  28400, 'Solomon Islands — scattered but larger'],
+    TON: [-175.20, -21.18,    747, 'Tonga'],
+    TUV: [ 179.21,  -8.52,     26, 'Tuvalu — almost certainly no polygon'],
+    VUT: [ 166.96, -15.38,  12189, 'Vanuatu — scattered'],
+    WSM: [-172.10, -13.75,   2842, 'Samoa'],
+};
 
 // allMarkers: code → { marker, el, borderColor, coords }
 const allMarkers = {};
 
 // The base country fill color from the demotiles style
 const COUNTRY_FILL_COLOR = '#d4d4d4';
-
-// Compute the bounding-box screen area (px²) of a list of tile features
-function featurePixelArea(features) {
-    if (!features.length) return 0;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    features.forEach(f => {
-        const rings = f.geometry.type === 'Polygon'
-            ? f.geometry.coordinates
-            : f.geometry.type === 'MultiPolygon'
-                ? f.geometry.coordinates.flat()
-                : [];
-        rings.forEach(ring => {
-            ring.forEach(([lng, lat]) => {
-                try {
-                    const pt = map.project([lng, lat]);
-                    if (pt.x < minX) minX = pt.x;
-                    if (pt.x > maxX) maxX = pt.x;
-                    if (pt.y < minY) minY = pt.y;
-                    if (pt.y > maxY) maxY = pt.y;
-                } catch(e) {}
-            });
-        });
-    });
-    if (minX === Infinity) return 0;
-    return (maxX - minX) * (maxY - minY);
-}
-
-// Compute the centroid of a set of features from their bounding box midpoint
-function featureCentroid(features) {
-    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-    features.forEach(f => {
-        const rings = f.geometry.type === 'Polygon'
-            ? f.geometry.coordinates
-            : f.geometry.type === 'MultiPolygon'
-                ? f.geometry.coordinates.flat()
-                : [];
-        rings.forEach(ring => {
-            ring.forEach(([lng, lat]) => {
-                if (lng < minLng) minLng = lng;
-                if (lng > maxLng) maxLng = lng;
-                if (lat < minLat) minLat = lat;
-                if (lat > maxLat) maxLat = lat;
-            });
-        });
-    });
-    if (minLng === Infinity) return null;
-    return [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
-}
 
 function buildAllMarkers() {
     let borderColor = COUNTRY_FILL_COLOR;
@@ -1034,26 +991,7 @@ function buildAllMarkers() {
         if (typeof paint === 'string') borderColor = paint;
     } catch(e) {}
 
-    // Check every country in the quiz for small pixel footprint
-    countries.forEach(c => {
-        const code = c['Three_Letter_Country_Code'];
-        if (!code) return;
-
-        const features = map.querySourceFeatures('maplibre', {
-            sourceLayer: 'countries',
-            filter: ['==', ['get', 'ADM0_A3'], code]
-        });
-
-        const area = featurePixelArea(features);
-        const needsDot = area < PIXEL_AREA_THRESHOLD;
-
-        if (!needsDot) return;
-
-        // Get centroid: prefer computed from geometry, fall back to hardcoded
-        let coords = features.length ? featureCentroid(features) : null;
-        if (!coords) coords = FALLBACK_CENTROIDS[code] || null;
-        if (!coords) return; // no geometry and no fallback — skip
-
+    Object.entries(DOT_COUNTRIES).forEach(([code, [lng, lat]]) => {
         const el = document.createElement('div');
         el.className = 'small-country-marker';
         el.style.borderColor = borderColor;
@@ -1065,9 +1003,9 @@ function buildAllMarkers() {
             handleAnswer(code);
         });
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-            .setLngLat(coords)
+            .setLngLat([lng, lat])
             .addTo(map);
-        allMarkers[code] = { marker, el, borderColor, coords };
+        allMarkers[code] = { marker, el, borderColor, coords: [lng, lat] };
     });
 
     // Cull markers on the back of the globe on every render
