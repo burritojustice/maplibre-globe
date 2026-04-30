@@ -1,40 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>World Map Quiz</title>
-    <meta charset='utf-8'>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css' />
-    <script src='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.js'></script>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: 'Space Mono', monospace;
-            background: #0a0a0f;
-            color: #e8e8d0;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        html, body, #map { height: 100%; }
-        #map { position: absolute; inset: 0; }
-
-        /* ── HUD ── */
-        #hud {
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 100;
-            pointer-events: none;
-        }
-
-        #top-bar {
-            display: flex;
-            align-items: stretch;
-            background: #0a0a0f;
-            border-bottom: 2px solid #f0e040;
-            pointer-events: all;
+don't show centroids until we zoom to continent            pointer-events: all;
         }
 
         #title-block {
