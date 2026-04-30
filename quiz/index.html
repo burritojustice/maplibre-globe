@@ -760,7 +760,7 @@ function applyMapContinentFilter(continent) {
     }
     // Show/hide small-country markers based on continent
     Object.entries(allMarkers).forEach(([code, { el }]) => {
-        if (!codes || codes.includes(code)) {
+        if (codes && codes.includes(code)) {
             el.style.display = '';
         } else {
             el.style.display = 'none';
@@ -1027,6 +1027,7 @@ function buildAllMarkers() {
         const el = document.createElement('div');
         el.className = 'small-country-marker';
         el.style.borderColor = borderColor;
+        el.style.display = 'none'; // hidden until a continent is selected
         el.dataset.code = code;
         el.addEventListener('click', (e) => {
             e.stopPropagation();
