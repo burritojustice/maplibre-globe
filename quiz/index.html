@@ -474,28 +474,30 @@ const CONTINENT_BOUNDS = {
     'Africa':        [[-20, -35],  [52,  38]],
     'Asia':          [[ 25, -12],  [145, 55]],
     'Europe':        [[-25,  34],  [ 45, 72]],
-    'North America': [[-170,  5],  [-50, 72]],
+    'North America': [[-170, 7],   [-55, 72]],  // extends far enough south/east for Caribbean
     'South America': [[-82, -56],  [-34, 13]],
     'Oceania':       [[ 110, -48], [180, 22]],
 };
 
 // ─── Centroids ONLY for true micro-islands / archipelagos that are nearly
-//     impossible to click as polygons at global zoom. Mainland countries,
-//     peninsula nations, and islands large enough to register a click are excluded.
+//     impossible to click as polygons at continental zoom.
 const SMALL_COUNTRY_CENTROIDS = {
     ASM: [-170.69, -14.27], // American Samoa
     ATG: [ -61.80,  17.07], // Antigua and Barbuda
+    BHS: [ -77.39,  25.03], // Bahamas (scattered archipelago)
     BRB: [ -59.55,  13.17], // Barbados
     COM: [  43.87, -11.87], // Comoros
     CPV: [ -24.01,  16.00], // Cape Verde
     FJI: [ 178.06, -18.17], // Fiji
     GRD: [ -61.68,  12.12], // Grenada
+    JAM: [ -77.30,  18.11], // Jamaica (small, easy to miss at NA zoom)
     MDV: [  73.22,   4.17], // Maldives
     MLT: [  14.51,  35.90], // Malta
     MUS: [  57.55, -20.29], // Mauritius
     SGP: [ 103.82,   1.35], // Singapore
     SLB: [ 160.15,  -9.43], // Solomon Islands
     STP: [   6.61,   0.19], // Sao Tome and Principe
+    TTO: [ -61.22,  10.65], // Trinidad and Tobago
     WSM: [-172.10, -13.75], // Samoa
 };
 
@@ -910,20 +912,34 @@ function buildAllMarkers() {
             if (!quizActive || waitingForNext) return;
             handleAnswer(code);
         });
-        // Use z-index -1 on the MapLibre marker wrapper so it sits under country polygons
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat(coords)
             .addTo(map);
-        // Push the wrapper element behind the tile layers
-        if (marker.getElement().parentElement) {
-            marker.getElement().parentElement.style.zIndex = '0';
-        }
-        // Also set it after add, when the wrapper exists
-        setTimeout(() => {
-            const wrapper = marker.getElement();
-            if (wrapper) wrapper.style.zIndex = '0';
-        }, 0);
-        allMarkers[code] = { marker, el, borderColor };
+        allMarkers[code] = { marker, el, borderColor, coords, visible: true };
+    });
+
+    // Cull markers that are on the back of the globe on every render
+    map.on('render', cullGlobeMarkers);
+}
+
+// Hide markers that are on the back hemisphere of the globe.
+// We check if the angular distance from the map center to the marker
+// exceeds 90° — if so, it's over the horizon.
+function cullGlobeMarkers() {
+    const center = map.getCenter();
+    const cLat = center.lat * Math.PI / 180;
+    const cLng = center.lng * Math.PI / 180;
+
+    Object.values(allMarkers).forEach(({ el, coords }) => {
+        if (el.style.display === 'none') return; // hidden by continent filter
+        const [lng, lat] = coords;
+        const pLat = lat * Math.PI / 180;
+        const pLng = lng * Math.PI / 180;
+        // Dot product of the two unit vectors on the sphere
+        const dot = Math.sin(cLat) * Math.sin(pLat) +
+                    Math.cos(cLat) * Math.cos(pLat) * Math.cos(pLng - cLng);
+        // dot > 0 means same hemisphere (within 90°), dot <= 0 means behind
+        el.style.visibility = dot > 0 ? '' : 'hidden';
     });
 }
 
