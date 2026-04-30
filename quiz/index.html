@@ -735,8 +735,37 @@ const resultsBreakdown = document.getElementById('results-breakdown');
 const retryBtn         = document.getElementById('retry-btn');
 const newContinentBtn  = document.getElementById('new-continent-btn');
 
+// ─── Continent map filter ─────────────────────────────────────────────────────
+function getContinentCodes(continent) {
+    if (continent === 'ALL' || !continent) return null;
+    return countries
+        .filter(c => c['Continent_Name'] === continent)
+        .map(c => c['Three_Letter_Country_Code'])
+        .filter(Boolean);
+}
+
+function applyMapContinentFilter(continent) {
+    const codes = getContinentCodes(continent);
+    const layers = ['countries-fill', 'countries-boundary', 'coastline'];
+    if (!codes) {
+        layers.forEach(l => { try { map.setFilter(l, null); } catch(e){} });
+    } else {
+        const f = ['in', ['get', 'ADM0_A3'], ['literal', codes]];
+        layers.forEach(l => { try { map.setFilter(l, f); } catch(e){} });
+    }
+    // Show/hide small-country markers based on continent
+    Object.entries(allMarkers).forEach(([code, { el }]) => {
+        if (!codes || codes.includes(code)) {
+            el.style.display = '';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+}
+
 continentSelect.addEventListener('change', () => {
     startBtn.disabled = !continentSelect.value;
+    if (map.isStyleLoaded()) applyMapContinentFilter(continentSelect.value);
 });
 
 // ─── Map ──────────────────────────────────────────────────────────────────────
@@ -927,6 +956,7 @@ startBtn.addEventListener('click', () => {
     resultsPanel.style.display = 'none';
     clearAll();
     clearActiveMarker();
+    applyMapContinentFilter(continent);
     updateScore();
     nextQuestion();
 });
@@ -1079,6 +1109,7 @@ newContinentBtn.addEventListener('click', () => {
     updateScore();
     progressBarInner.style.width = '0%';
     progressText.textContent = '— countries remaining';
+    applyMapContinentFilter(null); // show all countries again
 });
 </script>
 </body>
