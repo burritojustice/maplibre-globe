@@ -654,7 +654,30 @@ Asia,AS,"Uzbekistan, Republic of",UZ,UZB,860
 South America,SA,"Venezuela, Bolivarian Republic of",VE,VEN,862
 Oceania,OC,"Samoa, Independent State of",WS,WSM,882
 Asia,AS,Yemen,YE,YEM,887
-Africa,AF,"Zambia, Republic of",ZM,ZMB,894`;
+Africa,AF,"Zambia, Republic of",ZM,ZMB,894
+Africa,AF,"Cape Verde, Republic of",CV,CPV,132
+Africa,AF,"Guinea-Bissau, Republic of",GW,GNB,624
+Africa,AF,"Sao Tome and Principe, Democratic Republic of",ST,STP,678
+Africa,AF,"Eswatini, Kingdom of",SZ,SWZ,748
+Africa,AF,"Seychelles, Republic of",SC,SYC,690
+Asia,AS,United Arab Emirates,AE,ARE,784
+Asia,AS,"Kazakhstan, Republic of",KZ,KAZ,398
+Asia,AS,"Maldives, Republic of",MV,MDV,462
+Asia,AS,"Oman, Sultanate of",OM,OMN,512
+Asia,AS,"Palestinian Territory, Occupied",PS,PSE,275
+Asia,AS,"Timor-Leste, Democratic Republic of",TL,TLS,626
+Europe,EU,"Liechtenstein, Principality of",LI,LIE,438
+Europe,EU,"Monaco, Principality of",MC,MCO,492
+Europe,EU,"Macedonia, The Former Yugoslav Republic of",MK,MKD,807
+Europe,EU,"San Marino, Republic of",SM,SMR,674
+Oceania,OC,"Micronesia, Federated States of",FM,FSM,583
+Oceania,OC,"Kiribati, Republic of",KI,KIR,296
+Oceania,OC,"Marshall Islands, Republic of the",MH,MHL,584
+Oceania,OC,"Nauru, Republic of",NR,NRU,520
+Oceania,OC,"Palau, Republic of",PW,PLW,585
+Oceania,OC,"Tonga, Kingdom of",TO,TON,776
+Oceania,OC,Tuvalu,TV,TUV,798
+Oceania,OC,"Vanuatu, Republic of",VU,VUT,548`;
 
 // ─── Parse CSV ───────────────────────────────────────────────────────────────
 function parseCSV(text) {
@@ -895,6 +918,28 @@ const FALLBACK_CENTROIDS = {
     KNA: [ -62.68,  17.35], // Saint Kitts and Nevis
     LCA: [ -60.98,  13.91], // Saint Lucia
     VCT: [ -61.20,  12.98], // Saint Vincent and the Grenadines
+    // Africa additions
+    CPV: [ -24.01,  16.00], // Cape Verde
+    GNB: [ -15.18,  11.86], // Guinea-Bissau (small coast)
+    STP: [   6.61,   0.19], // Sao Tome and Principe
+    SYC: [  55.49,  -4.68], // Seychelles
+    // Asia additions
+    MDV: [  73.22,   4.17], // Maldives
+    PSE: [  35.30,  31.90], // Palestine (West Bank centroid)
+    TLS: [ 125.73,  -8.87], // Timor-Leste
+    // Europe additions
+    LIE: [   9.55,  47.17], // Liechtenstein
+    MCO: [   7.41,  43.74], // Monaco
+    SMR: [  12.46,  43.94], // San Marino
+    // Oceania additions
+    FSM: [ 158.18,   6.92], // Micronesia
+    KIR: [ -157.36,  1.87], // Kiribati (central Pacific)
+    MHL: [ 171.18,   7.11], // Marshall Islands
+    NRU: [ 166.93,  -0.52], // Nauru
+    PLW: [ 134.49,   7.51], // Palau
+    TON: [-175.20, -21.18], // Tonga
+    TUV: [ 179.21,  -8.52], // Tuvalu
+    VUT: [ 166.96, -15.38], // Vanuatu
 };
 
 // Pixel-area threshold below which a dot is shown (at the current zoom).
