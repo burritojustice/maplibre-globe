@@ -138,6 +138,26 @@
         }
         #continent-select:hover { border-color: #f0e040; }
 
+        #hide-others-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            color: #888;
+            text-transform: uppercase;
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+        }
+        #hide-others-label:hover { color: #ccc; }
+        #hide-others-toggle {
+            accent-color: #f0e040;
+            width: 13px;
+            height: 13px;
+            cursor: pointer;
+        }
+
         #start-btn {
             margin-left: auto;
             background: #f0e040;
@@ -399,6 +419,10 @@
                 <option value="Oceania">Oceania</option>
                 <option value="ALL">🌍 All Continents</option>
             </select>
+            <label id="hide-others-label">
+                <input type="checkbox" id="hide-others-toggle">
+                <span>hide others</span>
+            </label>
         </div>
         <button id="start-btn" disabled>START</button>
     </div>
@@ -751,14 +775,16 @@ function getContinentCodes(continent) {
 
 function applyMapContinentFilter(continent) {
     const codes = getContinentCodes(continent);
+    const hideOthers = document.getElementById('hide-others-toggle').checked;
     const layers = ['countries-fill', 'countries-boundary', 'coastline'];
-    if (!codes) {
+
+    if (!codes || !hideOthers) {
         layers.forEach(l => { try { map.setFilter(l, null); } catch(e){} });
     } else {
         const f = ['in', ['get', 'ADM0_A3'], ['literal', codes]];
         layers.forEach(l => { try { map.setFilter(l, f); } catch(e){} });
     }
-    // Show/hide small-country markers based on continent
+    // Show markers only for the selected continent (always, regardless of hide-others)
     Object.entries(allMarkers).forEach(([code, { el }]) => {
         if (codes && codes.includes(code)) {
             el.style.display = '';
@@ -784,6 +810,10 @@ continentSelect.addEventListener('change', () => {
         applyMapContinentFilter(continentSelect.value);
         zoomToContinent(continentSelect.value);
     }
+});
+
+document.getElementById('hide-others-toggle').addEventListener('change', () => {
+    if (map.isStyleLoaded()) applyMapContinentFilter(continentSelect.value);
 });
 
 // ─── Map ──────────────────────────────────────────────────────────────────────
