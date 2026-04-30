@@ -35,10 +35,11 @@
             background: #0a0a0f;
             border-bottom: 2px solid #f0e040;
             pointer-events: all;
+            flex-wrap: wrap;
         }
 
         #title-block {
-            padding: 12px 20px;
+            padding: 10px 16px;
             border-right: 2px solid #f0e040;
             display: flex;
             flex-direction: column;
@@ -60,12 +61,12 @@
         }
 
         #score-block {
-            padding: 12px 20px;
+            padding: 10px 16px;
             border-right: 2px solid #f0e040;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            min-width: 120px;
+            min-width: 100px;
         }
         #score-block .label {
             font-size: 9px;
@@ -75,18 +76,18 @@
         }
         #score-display {
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 32px;
+            font-size: 28px;
             color: #f0e040;
             line-height: 1;
         }
 
         #progress-block {
-            padding: 12px 20px;
+            padding: 10px 16px;
             border-right: 2px solid #f0e040;
             display: flex;
             flex-direction: column;
             justify-content: center;
-            min-width: 160px;
+            min-width: 140px;
         }
         #progress-block .label {
             font-size: 9px;
@@ -112,12 +113,20 @@
             margin-top: 3px;
         }
 
+        /* On mobile this block drops to its own full-width row */
         #continent-select-block {
-            padding: 12px 20px;
+            padding: 10px 16px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             flex: 1;
+            min-width: 0;
+        }
+        /* Label sits above the select on its own */
+        #continent-select-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
         #continent-select-block .label {
             font-size: 9px;
@@ -135,6 +144,7 @@
             padding: 6px 10px;
             cursor: pointer;
             outline: none;
+            max-width: 180px;
         }
         #continent-select:hover { border-color: #f0e040; }
 
@@ -159,7 +169,6 @@
         }
 
         #start-btn {
-            margin-left: auto;
             background: #f0e040;
             color: #0a0a0f;
             border: none;
@@ -170,9 +179,39 @@
             cursor: pointer;
             transition: background 0.15s;
             pointer-events: all;
+            white-space: nowrap;
         }
         #start-btn:hover { background: #fff; }
         #start-btn:disabled { background: #444; color: #666; cursor: not-allowed; }
+
+        /* ── Mobile: stack controls row below stats row ── */
+        @media (max-width: 600px) {
+            #title-block span { display: none; }
+            #title-block h1 { font-size: 22px; }
+            #score-block { min-width: 80px; padding: 8px 12px; }
+            #score-display { font-size: 22px; }
+            #progress-block { min-width: 110px; padding: 8px 12px; }
+
+            #continent-select-block {
+                order: 10; /* drop below other blocks */
+                width: 100%;
+                border-top: 2px solid #f0e040;
+                border-right: none;
+                padding: 8px 12px;
+                gap: 10px;
+            }
+            #start-btn {
+                order: 10;
+                border-top: 2px solid #f0e040;
+                border-left: 2px solid #f0e040;
+                padding: 12px 20px;
+                font-size: 18px;
+            }
+            #continent-select {
+                max-width: none;
+                flex: 1;
+            }
+        }
 
         /* ── Question card ── */
         #question-card {
@@ -408,17 +447,19 @@
             <div id="progress-text">— countries remaining</div>
         </div>
         <div id="continent-select-block">
-            <span class="label">Continent</span>
-            <select id="continent-select">
-                <option value="">— pick a continent —</option>
-                <option value="Africa">Africa</option>
-                <option value="Asia">Asia</option>
-                <option value="Europe">Europe</option>
-                <option value="North America">North America</option>
-                <option value="South America">South America</option>
-                <option value="Oceania">Oceania</option>
-                <option value="ALL">🌍 All Continents</option>
-            </select>
+            <div id="continent-select-wrap">
+                <span class="label">Continent</span>
+                <select id="continent-select">
+                    <option value="">— pick one —</option>
+                    <option value="Africa">Africa</option>
+                    <option value="Asia">Asia</option>
+                    <option value="Europe">Europe</option>
+                    <option value="North America">N. America</option>
+                    <option value="South America">S. America</option>
+                    <option value="Oceania">Oceania</option>
+                    <option value="ALL">🌍 All</option>
+                </select>
+            </div>
             <label id="hide-others-label">
                 <input type="checkbox" id="hide-others-toggle">
                 <span>hide others</span>
