@@ -479,28 +479,6 @@ const CONTINENT_BOUNDS = {
     'Oceania':       [[ 110, -48], [180, 22]],
 };
 
-// ─── Centroids ONLY for true micro-islands / archipelagos that are nearly
-//     impossible to click as polygons at continental zoom.
-const SMALL_COUNTRY_CENTROIDS = {
-    ASM: [-170.69, -14.27], // American Samoa
-    ATG: [ -61.80,  17.07], // Antigua and Barbuda
-    BHS: [ -77.39,  25.03], // Bahamas (scattered archipelago)
-    BRB: [ -59.55,  13.17], // Barbados
-    COM: [  43.87, -11.87], // Comoros
-    CPV: [ -24.01,  16.00], // Cape Verde
-    FJI: [ 178.06, -18.17], // Fiji
-    GRD: [ -61.68,  12.12], // Grenada
-    JAM: [ -77.30,  18.11], // Jamaica (small, easy to miss at NA zoom)
-    MDV: [  73.22,   4.17], // Maldives
-    MLT: [  14.51,  35.90], // Malta
-    MUS: [  57.55, -20.29], // Mauritius
-    SGP: [ 103.82,   1.35], // Singapore
-    SLB: [ 160.15,  -9.43], // Solomon Islands
-    STP: [   6.61,   0.19], // Sao Tome and Principe
-    TTO: [ -61.22,  10.65], // Trinidad and Tobago
-    WSM: [-172.10, -13.75], // Samoa
-};
-
 // ─── CSV (embedded) ──────────────────────────────────────────────────────────
 const CSV = `Continent_Name,Continent_Code,Country_Name,Two_Letter_Country_Code,Three_Letter_Country_Code,Country_Number
 Asia,AS,"Afghanistan, Islamic Republic of",AF,AFG,4
@@ -657,6 +635,10 @@ Asia,AS,"Tajikistan, Republic of",TJ,TJK,762
 Asia,AS,"Thailand, Kingdom of",TH,THA,764
 Africa,AF,"Togo, Togolese Republic",TG,TGO,768
 North America,NA,"Trinidad and Tobago, Republic of",TT,TTO,780
+North America,NA,"Dominica, Commonwealth of",DM,DMA,212
+North America,NA,"Saint Kitts and Nevis, Federation of",KN,KNA,659
+North America,NA,Saint Lucia,LC,LCA,662
+North America,NA,Saint Vincent and the Grenadines,VC,VCT,670
 Africa,AF,"Tunisia, Tunisian Republic",TN,TUN,788
 Europe,EU,"Turkey, Republic of",TR,TUR,792
 Asia,AS,Turkmenistan,TM,TKM,795
@@ -887,22 +869,120 @@ function blinkCountry(code, sourceId, times, intervalMs, done) {
     }, intervalMs);
 }
 
-// ─── Small country markers ─────────────────────────────────────────────────────
-// allMarkers: code → { marker, el }
+// ─── Small country markers — auto-detected by pixel area ────────────────────
+// Fallback centroids for countries whose polygons are absent from the tile data
+// at low zoom (too small to appear at all). Used only if querySourceFeatures
+// returns nothing for that code.
+const FALLBACK_CENTROIDS = {
+    ATG: [ -61.80,  17.07], // Antigua and Barbuda
+    BRB: [ -59.55,  13.17], // Barbados
+    COM: [  43.87, -11.87], // Comoros
+    CPV: [ -24.01,  16.00], // Cape Verde
+    GRD: [ -61.68,  12.12], // Grenada
+    MDV: [  73.22,   4.17], // Maldives
+    MLT: [  14.51,  35.90], // Malta
+    MUS: [  57.55, -20.29], // Mauritius
+    SGP: [ 103.82,   1.35], // Singapore
+    SLB: [ 160.15,  -9.43], // Solomon Islands
+    STP: [   6.61,   0.19], // Sao Tome and Principe
+    WSM: [-172.10, -13.75], // Samoa
+    ASM: [-170.69, -14.27], // American Samoa
+    FJI: [ 178.06, -18.17], // Fiji
+    BHS: [ -77.39,  25.03], // Bahamas
+    JAM: [ -77.30,  18.11], // Jamaica
+    TTO: [ -61.22,  10.65], // Trinidad and Tobago
+    DMA: [ -61.37,  15.42], // Dominica
+    KNA: [ -62.68,  17.35], // Saint Kitts and Nevis
+    LCA: [ -60.98,  13.91], // Saint Lucia
+    VCT: [ -61.20,  12.98], // Saint Vincent and the Grenadines
+};
+
+// Pixel-area threshold below which a dot is shown (at the current zoom).
+// Tuned so that countries like Jamaica (~400 px²) and Malta get dots
+// but Panama, Lebanon, etc. (~800+ px²) do not.
+const PIXEL_AREA_THRESHOLD = 500;
+
+// allMarkers: code → { marker, el, borderColor, coords }
 const allMarkers = {};
 
 // The base country fill color from the demotiles style
-const COUNTRY_FILL_COLOR = '#d4d4d4'; // approximation of the basemap's country color
+const COUNTRY_FILL_COLOR = '#d4d4d4';
+
+// Compute the bounding-box screen area (px²) of a list of tile features
+function featurePixelArea(features) {
+    if (!features.length) return 0;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    features.forEach(f => {
+        const rings = f.geometry.type === 'Polygon'
+            ? f.geometry.coordinates
+            : f.geometry.type === 'MultiPolygon'
+                ? f.geometry.coordinates.flat()
+                : [];
+        rings.forEach(ring => {
+            ring.forEach(([lng, lat]) => {
+                try {
+                    const pt = map.project([lng, lat]);
+                    if (pt.x < minX) minX = pt.x;
+                    if (pt.x > maxX) maxX = pt.x;
+                    if (pt.y < minY) minY = pt.y;
+                    if (pt.y > maxY) maxY = pt.y;
+                } catch(e) {}
+            });
+        });
+    });
+    if (minX === Infinity) return 0;
+    return (maxX - minX) * (maxY - minY);
+}
+
+// Compute the centroid of a set of features from their bounding box midpoint
+function featureCentroid(features) {
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    features.forEach(f => {
+        const rings = f.geometry.type === 'Polygon'
+            ? f.geometry.coordinates
+            : f.geometry.type === 'MultiPolygon'
+                ? f.geometry.coordinates.flat()
+                : [];
+        rings.forEach(ring => {
+            ring.forEach(([lng, lat]) => {
+                if (lng < minLng) minLng = lng;
+                if (lng > maxLng) maxLng = lng;
+                if (lat < minLat) minLat = lat;
+                if (lat > maxLat) maxLat = lat;
+            });
+        });
+    });
+    if (minLng === Infinity) return null;
+    return [(minLng + maxLng) / 2, (minLat + maxLat) / 2];
+}
 
 function buildAllMarkers() {
-    // Read the actual fill color from the map style for the border
     let borderColor = COUNTRY_FILL_COLOR;
     try {
         const paint = map.getPaintProperty('countries-fill', 'fill-color');
         if (typeof paint === 'string') borderColor = paint;
     } catch(e) {}
 
-    Object.entries(SMALL_COUNTRY_CENTROIDS).forEach(([code, coords]) => {
+    // Check every country in the quiz for small pixel footprint
+    countries.forEach(c => {
+        const code = c['Three_Letter_Country_Code'];
+        if (!code) return;
+
+        const features = map.querySourceFeatures('maplibre', {
+            sourceLayer: 'countries',
+            filter: ['==', ['get', 'ADM0_A3'], code]
+        });
+
+        const area = featurePixelArea(features);
+        const needsDot = area < PIXEL_AREA_THRESHOLD;
+
+        if (!needsDot) return;
+
+        // Get centroid: prefer computed from geometry, fall back to hardcoded
+        let coords = features.length ? featureCentroid(features) : null;
+        if (!coords) coords = FALLBACK_CENTROIDS[code] || null;
+        if (!coords) return; // no geometry and no fallback — skip
+
         const el = document.createElement('div');
         el.className = 'small-country-marker';
         el.style.borderColor = borderColor;
@@ -915,10 +995,10 @@ function buildAllMarkers() {
         const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
             .setLngLat(coords)
             .addTo(map);
-        allMarkers[code] = { marker, el, borderColor, coords, visible: true };
+        allMarkers[code] = { marker, el, borderColor, coords };
     });
 
-    // Cull markers that are on the back of the globe on every render
+    // Cull markers on the back of the globe on every render
     map.on('render', cullGlobeMarkers);
 }
 
