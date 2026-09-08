@@ -287,19 +287,19 @@
             
             // Crimea lives in its own separate source/layer (crimea-fill), not
             // in the 'countries' source, so it never shows up in the query
-            // above. When Ukraine is selected, pull it in and merge it into
-            // Ukraine's outline group.
-            if (selectedCountries.has('UKR') && map.getSource('crimea')) {
-                const crimeaFeatures = map.querySourceFeatures('crimea');
-                if (crimeaFeatures.length > 0) {
+            // above. When Ukraine is selected, merge in its pre-captured
+            // geometry (rather than re-querying the source fresh here, which
+            // could race with the source still loading).
+            if (selectedCountries.has('UKR')) {
+                if (crimeaGeometry) {
                     if (!byCountry['UKR']) byCountry['UKR'] = [];
-                    crimeaFeatures.forEach(f => {
-                        byCountry['UKR'].push({
-                            type: 'Feature',
-                            geometry: f.geometry,
-                            properties: f.properties
-                        });
+                    byCountry['UKR'].push({
+                        type: 'Feature',
+                        geometry: crimeaGeometry.geometry,
+                        properties: crimeaGeometry.properties || {}
                     });
+                } else {
+                    console.warn('[debug] Ukraine selected but crimeaGeometry not yet captured — Crimea omitted from this outline');
                 }
             }
             
@@ -418,9 +418,24 @@
         function updateCrimeaTreatment(ukraineVisible, russiaVisible) {
             const crimeaVisible = ukraineVisible;
             
+            console.log('[debug] updateCrimeaTreatment', {
+                ukraineVisible,
+                russiaVisible,
+                crimeaVisible,
+                waterOutlineShouldShow: crimeaVisible,
+                maskShouldShow: !crimeaVisible && russiaVisible,
+                crimeaWaterOutlineLayerExists: !!map.getLayer('crimea-water-outline'),
+                crimeaWaterOutlineCurrentVisibility: map.getLayer('crimea-water-outline')
+                    ? map.getLayoutProperty('crimea-water-outline', 'visibility')
+                    : null
+            });
+            
             setCrimeaVisible(crimeaVisible);
             setCrimeaWaterOutlineVisible(crimeaVisible);
             setCrimeaMaskVisible(!crimeaVisible && russiaVisible);
+            
+            console.log('[debug] crimea-water-outline visibility after update:',
+                map.getLayoutProperty('crimea-water-outline', 'visibility'));
         }
         
         // ─── Small country marker functions ─────────────────────────────────
