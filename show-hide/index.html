@@ -17,11 +17,11 @@
         body { margin: 0; padding: 0; }
         html, body, #map { height: 100%; }
         .small-country-marker {
-            width: 12px;
-            height: 12px;
+            width: 18px;
+            height: 18px;
             border-radius: 50%;
             background: rgba(255, 255, 255, 0.35);
-            border: 2px solid rgba(0, 0, 0, 0.45);
+            border: 3px solid rgba(0, 0, 0, 0.45);
             box-sizing: border-box;
             cursor: pointer;
             transition: background 0.15s ease, border-color 0.15s ease;
@@ -109,6 +109,7 @@
         map.setLayerZoomRange('countries-label', 3, 24);
         
         let codeToAbbrev = {};
+        let abbrevToCode = {};
         let hideActive = false;
         let showActive = false;
         let selectedCountries = new Set();
@@ -267,7 +268,7 @@
                     console.log('Selected countries:', Array.from(selectedCountries));
                 });
                 
-                const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+                const marker = new maplibregl.Marker({ element: el, anchor: 'center', offset: [0, 14] })
                     .setLngLat(coords)
                     .addTo(map);
                 
@@ -323,6 +324,7 @@
                 const abbrev = feature.properties.ABBREV;
                 if (code && abbrev) {
                     codeToAbbrev[code] = abbrev;
+                    abbrevToCode[abbrev] = code;
                 }
             });
             
@@ -371,6 +373,35 @@
         });
         
         map.on('mouseleave', 'countries-fill', () => {
+            map.getCanvas().style.cursor = '';
+        });
+        
+        // Handle clicks on the country label text (same toggle behavior as the fill)
+        map.on('click', 'countries-label', (e) => {
+            if (hideActive || showActive) return; // Don't allow selection when filters are active
+            
+            const abbrev = e.features[0].properties.ABBREV;
+            const countryCode = abbrevToCode[abbrev];
+            if (!countryCode) return;
+            
+            if (selectedCountries.has(countryCode)) {
+                selectedCountries.delete(countryCode);
+            } else {
+                selectedCountries.add(countryCode);
+            }
+            
+            updateSelectedOutline();
+            console.log('Selected countries:', Array.from(selectedCountries));
+        });
+        
+        // Change cursor on hover over labels
+        map.on('mouseenter', 'countries-label', () => {
+            if (!hideActive && !showActive) {
+                map.getCanvas().style.cursor = 'pointer';
+            }
+        });
+        
+        map.on('mouseleave', 'countries-label', () => {
             map.getCanvas().style.cursor = '';
         });
         
