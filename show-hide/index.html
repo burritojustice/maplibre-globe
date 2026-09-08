@@ -280,9 +280,11 @@
         // Keep marker appearance in sync with selection / active filter state
         function updateSmallCountryMarkerStyles() {
             Object.entries(smallCountryMarkers).forEach(([code, { el }]) => {
-                const isSelected = selectedCountries.has(code) && !hideActive && !showActive;
+                const filterActive = hideActive || showActive;
+                const isSelected = selectedCountries.has(code) && !filterActive;
                 el.classList.toggle('selected', isSelected);
-                el.classList.toggle('disabled', hideActive || showActive);
+                el.classList.toggle('disabled', filterActive);
+                el.style.display = filterActive ? 'none' : '';
             });
         }
         
