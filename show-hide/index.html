@@ -438,7 +438,13 @@
         
         // Handle country clicks for selection (only if no URL params or filters not active)
         map.on('click', 'countries-fill', (e) => {
-            if (hideActive || showActive) return; // Don't allow selection when filters are active
+            if (hideActive || showActive) {
+                // Debug aid: log what's under the cursor even while a filter is
+                // active, so we can identify stray/independent geometry (like
+                // an unaccounted-for Crimea fragment) that's slipping through.
+                console.log('[debug] click while hide/show active — feature properties:', e.features[0].properties);
+                return; // Don't allow selection when filters are active
+            }
             
             const feature = e.features[0];
             const isCrimea = crimeaMatchKey && findCrimeaMatch(feature.properties);
