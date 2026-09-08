@@ -16,6 +16,23 @@
     <style>
         body { margin: 0; padding: 0; }
         html, body, #map { height: 100%; }
+        .small-country-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.35);
+            border: 2px solid rgba(0, 0, 0, 0.45);
+            box-sizing: border-box;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .small-country-marker.selected {
+            background: rgba(255, 0, 0, 0.45);
+            border-color: #ff0000;
+        }
+        .small-country-marker.disabled {
+            cursor: default;
+        }
     </style>
 </head>
 <body>
@@ -34,6 +51,43 @@
     const hasUrlParams = hideParam || showParam;
     const hasOnlyHide = hideParam && !showParam;
     const hasOnlyShow = showParam && !hideParam;
+    
+    // ─── Small country markers ──────────────────────────────────────────────
+    // Hardcoded centroids for micro-island / enclave nations whose polygons
+    // are too small or scattered to reliably click at low zoom levels.
+    const SMALL_COUNTRY_CENTROIDS = {
+        AND: [   1.52,  42.55], // Andorra
+        ASM: [-170.69, -14.27], // American Samoa
+        ATG: [ -61.80,  17.07], // Antigua and Barbuda
+        BHR: [  50.55,  26.03], // Bahrain
+        BHS: [ -77.39,  25.03], // Bahamas
+        BRB: [ -59.55,  13.17], // Barbados
+        COM: [  43.87, -11.87], // Comoros
+        CPV: [ -24.01,  16.00], // Cape Verde
+        FJI: [ 178.06, -18.17], // Fiji
+        FSM: [ 158.25,   6.92], // Micronesia
+        GRD: [ -61.68,  12.12], // Grenada
+        JAM: [ -77.30,  18.11], // Jamaica
+        KIR: [ 173.00,   1.35], // Kiribati
+        LIE: [   9.55,  47.14], // Liechtenstein
+        MCO: [   7.42,  43.73], // Monaco
+        MDV: [  73.22,   4.17], // Maldives
+        MHL: [ 171.18,   7.13], // Marshall Islands
+        MLT: [  14.51,  35.90], // Malta
+        MUS: [  57.55, -20.29], // Mauritius
+        NRU: [ 166.93,  -0.52], // Nauru
+        PLW: [ 134.58,   7.51], // Palau
+        SGP: [ 103.82,   1.35], // Singapore
+        SLB: [ 160.15,  -9.43], // Solomon Islands
+        SMR: [  12.46,  43.94], // San Marino
+        STP: [   6.61,   0.19], // Sao Tome and Principe
+        SYC: [  55.45,  -4.68], // Seychelles
+        TON: [-175.20, -21.13], // Tonga
+        TTO: [ -61.22,  10.65], // Trinidad and Tobago
+        TUV: [ 179.20,  -8.52], // Tuvalu
+        VAT: [  12.45,  41.90], // Vatican City
+        WSM: [-172.10, -13.75], // Samoa
+    };
     
     const map = new maplibregl.Map({
         container: 'map',
@@ -87,6 +141,8 @@
         
         // Function to update selected countries outline
         function updateSelectedOutline() {
+            updateSmallCountryMarkerStyles();
+            
             if (selectedCountries.size === 0) {
                 map.getSource('selected-countries').setData({
                     type: 'FeatureCollection',
@@ -188,6 +244,48 @@
             map.setFilter('countries-label', null);
         }
         
+        // ─── Small country marker functions ─────────────────────────────────
+        let smallCountryMarkers = {};
+        
+        function buildSmallCountryMarkers() {
+            Object.entries(SMALL_COUNTRY_CENTROIDS).forEach(([code, coords]) => {
+                const el = document.createElement('div');
+                el.className = 'small-country-marker';
+                el.title = code;
+                
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (hideActive || showActive) return; // Same guard as polygon clicks
+                    
+                    if (selectedCountries.has(code)) {
+                        selectedCountries.delete(code);
+                    } else {
+                        selectedCountries.add(code);
+                    }
+                    
+                    updateSelectedOutline();
+                    console.log('Selected countries:', Array.from(selectedCountries));
+                });
+                
+                const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+                    .setLngLat(coords)
+                    .addTo(map);
+                
+                smallCountryMarkers[code] = { marker, el };
+            });
+            
+            updateSmallCountryMarkerStyles();
+        }
+        
+        // Keep marker appearance in sync with selection / active filter state
+        function updateSmallCountryMarkerStyles() {
+            Object.entries(smallCountryMarkers).forEach(([code, { el }]) => {
+                const isSelected = selectedCountries.has(code) && !hideActive && !showActive;
+                el.classList.toggle('selected', isSelected);
+                el.classList.toggle('disabled', hideActive || showActive);
+            });
+        }
+        
         // Function to update URL with current selection
         function updateURL() {
             const url = new URL(window.location);
@@ -243,6 +341,8 @@
                 // Both parameters - populate selection but don't apply
                 selectedCountries = new Set([...countriesToHide, ...countriesToShow]);
             }
+            
+            buildSmallCountryMarkers();
         });
         
         // Handle country clicks for selection (only if no URL params or filters not active)
@@ -364,6 +464,8 @@
                 showBtn.style.background = 'rgba(255,255,255,0.5)';
                 showBtn.style.color = '#667eea';
             }
+            
+            updateSmallCountryMarkerStyles();
         }
         
         // Handle Hide button clicks
