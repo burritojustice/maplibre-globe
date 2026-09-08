@@ -272,10 +272,34 @@
                     .setLngLat(coords)
                     .addTo(map);
                 
-                smallCountryMarkers[code] = { marker, el };
+                smallCountryMarkers[code] = { marker, el, coords };
             });
             
             updateSmallCountryMarkerStyles();
+            map.on('render', cullGlobeMarkers);
+        }
+        
+        // Hide markers that have rotated to the far side of the globe.
+        // A marker is "visible" if its angular distance from the map's
+        // current center is under 90° (i.e. the two unit vectors on the
+        // sphere have a positive dot product).
+        function cullGlobeMarkers() {
+            const center = map.getCenter();
+            const cLat = center.lat * Math.PI / 180;
+            const cLng = center.lng * Math.PI / 180;
+            
+            Object.values(smallCountryMarkers).forEach(({ el, coords }) => {
+                if (el.style.display === 'none') return; // already hidden by hide/show filter
+                
+                const [lng, lat] = coords;
+                const pLat = lat * Math.PI / 180;
+                const pLng = lng * Math.PI / 180;
+                
+                const dot = Math.sin(cLat) * Math.sin(pLat) +
+                            Math.cos(cLat) * Math.cos(pLat) * Math.cos(pLng - cLng);
+                
+                el.style.visibility = dot > 0 ? '' : 'hidden';
+            });
         }
         
         // Keep marker appearance in sync with selection / active filter state
