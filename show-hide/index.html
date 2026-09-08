@@ -20,7 +20,7 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: rgba(211, 211, 211, 0.5);
+            background: transparent;
             border: 3px solid rgba(211, 211, 211, 0.5);
             box-sizing: border-box;
             cursor: pointer;
@@ -64,11 +64,14 @@
         BRB: [ -59.55,  13.17], // Barbados
         COM: [  43.87, -11.87], // Comoros
         CPV: [ -24.01,  16.00], // Cape Verde
+        DMA: [ -61.37,  15.42], // Dominica
         FJI: [ 178.06, -18.17], // Fiji
         FSM: [ 158.25,   6.92], // Micronesia
         GRD: [ -61.68,  12.12], // Grenada
         JAM: [ -77.30,  18.11], // Jamaica
         KIR: [ 173.00,   1.35], // Kiribati
+        KNA: [ -62.78,  17.36], // Saint Kitts and Nevis
+        LCA: [ -60.98,  13.91], // Saint Lucia
         LIE: [   9.55,  47.14], // Liechtenstein
         MCO: [   7.42,  43.73], // Monaco
         MDV: [  73.22,   4.17], // Maldives
@@ -86,6 +89,7 @@
         TTO: [ -61.22,  10.65], // Trinidad and Tobago
         TUV: [ 179.20,  -8.52], // Tuvalu
         VAT: [  12.45,  41.90], // Vatican City
+        VCT: [ -61.20,  12.98], // Saint Vincent and the Grenadines
         WSM: [-172.10, -13.75], // Samoa
     };
     
@@ -181,24 +185,6 @@
             layout: { visibility: 'none' }
         });
         
-        map.addLayer({
-            id: 'crimea-mask-outline',
-            type: 'line',
-            source: 'crimea',
-            paint: {
-                'line-color': oceanColor,
-                'line-width': {
-                    'stops': [
-                        [1, 1],
-                        [6, 2],
-                        [14, 6],
-                        [22, 12]
-                    ]
-                }
-            },
-            layout: { visibility: 'none' }
-        });
-        
         function setCrimeaWaterOutlineVisible(visible) {
             if (!map.getLayer('crimea-water-outline')) return;
             map.setLayoutProperty('crimea-water-outline', 'visibility', visible ? 'visible' : 'none');
@@ -206,9 +192,7 @@
         
         function setCrimeaMaskVisible(visible) {
             if (!map.getLayer('crimea-mask-fill')) return;
-            const vis = visible ? 'visible' : 'none';
-            map.setLayoutProperty('crimea-mask-fill', 'visibility', vis);
-            map.setLayoutProperty('crimea-mask-outline', 'visibility', vis);
+            map.setLayoutProperty('crimea-mask-fill', 'visibility', visible ? 'visible' : 'none');
         }
         
         // Function to update selected countries outline
@@ -494,6 +478,11 @@
         // Handle country clicks for selection (only if no URL params or filters not active)
         map.on('click', 'countries-fill', (e) => {
             if (hideActive || showActive) return; // Don't allow selection when filters are active
+            
+            // Crimea's own layer visually sits on top of Russia's polygon
+            // here, so a click on Crimea also matches 'countries-fill'
+            // underneath. Let Crimea's dedicated handler take it instead.
+            if (map.queryRenderedFeatures(e.point, { layers: ['crimea-fill'] }).length > 0) return;
             
             const countryCode = e.features[0].properties.ADM0_A3;
             
