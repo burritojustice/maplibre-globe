@@ -111,12 +111,9 @@
         // Debug: dump every layer in the style so we can spot any layer
         // (e.g. a distinct disputed-territory layer for Crimea) that our
         // hide/show filters aren't currently touching.
-        console.log('[debug] all style layers:', map.getStyle().layers.map(l => ({
-            id: l.id,
-            type: l.type,
-            source: l.source,
-            sourceLayer: l['source-layer']
-        })));
+        console.log('[debug] all style layers:\n' + map.getStyle().layers.map(l =>
+            `${l.id} | type=${l.type} | source=${l.source} | sourceLayer=${l['source-layer'] || ''}`
+        ).join('\n'));
         
         let codeToAbbrev = {};
         let abbrevToCode = {};
