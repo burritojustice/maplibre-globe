@@ -180,10 +180,22 @@
             layout: { visibility: 'none' }
         });
         
+        // crimea-water-outline draws from its own pre-merged GeoJSON source
+        // (populated below, once captureCrimeaGeometry runs) rather than the
+        // raw 'crimea' source directly. That source is tiled — querying it
+        // returns multiple per-tile fragments — so a line layer built
+        // straight off it only traces each tile's own clipped edge, which is
+        // exactly the tile-seam artifact we fixed for country outlines
+        // earlier (partial/asymmetric-looking boundaries).
+        map.addSource('crimea-outline-source', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
+        
         map.addLayer({
             id: 'crimea-water-outline',
             type: 'line',
-            source: 'crimea',
+            source: 'crimea-outline-source',
             paint: {
                 'line-color': oceanColor,
                 'line-width': {
@@ -209,10 +221,11 @@
         }
         
         // Capture Crimea's geometry (unioned into a single polygon if split
-        // across tile fragments) — the precise version for click hit-testing,
-        // and a buffered (slightly larger) version for masking/carve-outs so
-        // they fully cover Russia's boundary line at that seam instead of
-        // leaving a sliver visible from a geometry mismatch between datasets.
+        // across tile fragments) — the precise version for click hit-testing
+        // and for the water outline, and a buffered (slightly larger)
+        // version for masking/carve-outs so they fully cover Russia's
+        // boundary line at that seam instead of leaving a sliver visible
+        // from a geometry mismatch between datasets.
         function captureCrimeaGeometry() {
             if (crimeaGeometry) return; // already captured
             
@@ -229,6 +242,11 @@
                 console.warn('Turf union failed for Crimea geometry capture', err);
                 crimeaGeometry = crimeaFragments[0];
             }
+            
+            map.getSource('crimea-outline-source').setData({
+                type: 'FeatureCollection',
+                features: [crimeaGeometry]
+            });
             
             try {
                 crimeaMaskGeometry = turf.buffer(crimeaGeometry, 25, { units: 'kilometers' });
