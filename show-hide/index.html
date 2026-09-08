@@ -98,7 +98,7 @@
         style: 'https://demotiles.maplibre.org/style.json',
         zoom: 1.5,
         center: [-62.1, 61.7],
-        maxZoom: 4.3
+        maxZoom: 4.7
     });
     
     map.on('style.load', () => {
@@ -147,24 +147,31 @@
         
         // ─── Crimea water treatment ─────────────────────────────────────────
         // Crimea sits on its own separate layer/source ('crimea-fill'), not
-        // inside 'countries', and already has its own native white border
-        // (crimea-fill's own fill-outline-color, part of the base style).
-        // Two things need handling:
-        //  1. When Crimea is shown but Russia isn't, recolor Crimea's own
-        //     border from white to the ocean color, so it reads as a
-        //     coastline instead of a floating white-bordered shape.
-        //  2. When Crimea is hidden but Russia IS shown, Russia's own
-        //     polygon/boundary in this data still includes that peninsula
-        //     shape (fill AND a white boundary line), so hiding crimea-fill
-        //     alone leaves a Crimea-shaped patch and border visible as part
-        //     of Russia. Mask both with ocean-colored fill + outline.
+        // inside 'countries'. Two dedicated layers handle the visual
+        // side-effects of hiding Russia or Ukraine:
+        //  - crimea-water-outline: a proper zoom-scaled line layer (Crimea's
+        //    own native fill-outline-color is a thin fixed-width line, too
+        //    subtle to read clearly) drawn in the ocean color, shown when
+        //    Crimea is visible but Russia isn't — so it reads as a coastline
+        //    rather than a floating shape.
+        //  - crimea-mask-fill: covers the Crimea-shaped patch that's still
+        //    part of Russia's own polygon/boundary in this data, shown when
+        //    Crimea is hidden but Russia IS shown. It's built from a
+        //    slightly buffered version of Crimea's geometry (computed once
+        //    the source is queryable, see idle handler below) so it fully
+        //    covers Russia's boundary line at that edge instead of leaving
+        //    a sliver visible from a geometry mismatch.
         const oceanColor = map.getPaintProperty('background', 'background-color') || '#a6cee3';
-        const crimeaDefaultOutlineColor = map.getPaintProperty('crimea-fill', 'fill-outline-color') || '#ffffff';
+        
+        map.addSource('crimea-mask', {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] }
+        });
         
         map.addLayer({
             id: 'crimea-mask-fill',
             type: 'fill',
-            source: 'crimea',
+            source: 'crimea-mask',
             paint: {
                 'fill-color': oceanColor
             },
@@ -172,7 +179,7 @@
         });
         
         map.addLayer({
-            id: 'crimea-mask-outline',
+            id: 'crimea-water-outline',
             type: 'line',
             source: 'crimea',
             paint: {
@@ -189,16 +196,14 @@
             layout: { visibility: 'none' }
         });
         
-        function setCrimeaBorderColor(color) {
-            if (!map.getLayer('crimea-fill')) return;
-            map.setPaintProperty('crimea-fill', 'fill-outline-color', color);
+        function setCrimeaWaterOutlineVisible(visible) {
+            if (!map.getLayer('crimea-water-outline')) return;
+            map.setLayoutProperty('crimea-water-outline', 'visibility', visible ? 'visible' : 'none');
         }
         
         function setCrimeaMaskVisible(visible) {
             if (!map.getLayer('crimea-mask-fill')) return;
-            const vis = visible ? 'visible' : 'none';
-            map.setLayoutProperty('crimea-mask-fill', 'visibility', vis);
-            map.setLayoutProperty('crimea-mask-outline', 'visibility', vis);
+            map.setLayoutProperty('crimea-mask-fill', 'visibility', visible ? 'visible' : 'none');
         }
         
         // Function to update selected countries outline
@@ -254,21 +259,36 @@
             const mergedFeatures = [];
             Object.keys(byCountry).forEach(code => {
                 const parts = byCountry[code];
+                let merged;
+                
                 if (parts.length === 1) {
-                    mergedFeatures.push(parts[0]);
-                    return;
-                }
-                try {
-                    let merged = parts[0];
-                    for (let i = 1; i < parts.length; i++) {
-                        merged = turf.union(merged, parts[i]);
+                    merged = parts[0];
+                } else {
+                    try {
+                        merged = parts[0];
+                        for (let i = 1; i < parts.length; i++) {
+                            merged = turf.union(merged, parts[i]);
+                        }
+                        merged.properties = parts[0].properties;
+                    } catch (err) {
+                        console.warn('Turf union failed for', code, '- falling back to raw fragments', err);
+                        parts.forEach(p => mergedFeatures.push(p));
+                        return;
                     }
-                    merged.properties = parts[0].properties;
-                    mergedFeatures.push(merged);
-                } catch (err) {
-                    console.warn('Turf union failed for', code, '- falling back to raw fragments', err);
-                    parts.forEach(p => mergedFeatures.push(p));
                 }
+                
+                // Russia's own polygon in this data includes Crimea's shape.
+                // Carve it out so selecting Russia doesn't also outline Crimea.
+                if (code === 'RUS' && crimeaGeometry) {
+                    try {
+                        const diffed = turf.difference(merged, crimeaGeometry);
+                        if (diffed) merged = diffed;
+                    } catch (err) {
+                        console.warn('Turf difference failed removing Crimea from Russia outline', err);
+                    }
+                }
+                
+                mergedFeatures.push(merged);
             });
             
             console.log('Merged features for outline:', mergedFeatures.length);
@@ -349,7 +369,7 @@
             const crimeaVisible = ukraineVisible;
             
             setCrimeaVisible(crimeaVisible);
-            setCrimeaBorderColor(crimeaVisible && !russiaVisible ? oceanColor : crimeaDefaultOutlineColor);
+            setCrimeaWaterOutlineVisible(crimeaVisible && !russiaVisible);
             setCrimeaMaskVisible(!crimeaVisible && russiaVisible);
         }
         
@@ -477,6 +497,24 @@
                 } catch (err) {
                     console.warn('Turf union failed for Crimea geometry capture', err);
                     crimeaGeometry = crimeaFragments[0];
+                }
+                
+                // Build the mask polygon slightly larger than Crimea's true
+                // shape, so it fully covers Russia's boundary line at that
+                // edge instead of leaving a sliver visible from a geometry
+                // mismatch between the two datasets.
+                try {
+                    const buffered = turf.buffer(crimeaGeometry, 15, { units: 'kilometers' });
+                    map.getSource('crimea-mask').setData({
+                        type: 'FeatureCollection',
+                        features: [buffered]
+                    });
+                } catch (err) {
+                    console.warn('Turf buffer failed for Crimea mask — using unbuffered geometry', err);
+                    map.getSource('crimea-mask').setData({
+                        type: 'FeatureCollection',
+                        features: [crimeaGeometry]
+                    });
                 }
             }
             
