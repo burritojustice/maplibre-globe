@@ -108,6 +108,16 @@
         // Only show labels at zoom 4 and above
         map.setLayerZoomRange('countries-label', 3, 24);
         
+        // Debug: dump every layer in the style so we can spot any layer
+        // (e.g. a distinct disputed-territory layer for Crimea) that our
+        // hide/show filters aren't currently touching.
+        console.log('[debug] all style layers:', map.getStyle().layers.map(l => ({
+            id: l.id,
+            type: l.type,
+            source: l.source,
+            sourceLayer: l['source-layer']
+        })));
+        
         let codeToAbbrev = {};
         let abbrevToCode = {};
         let hideActive = false;
