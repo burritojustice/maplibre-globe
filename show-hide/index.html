@@ -12,6 +12,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel='stylesheet' href='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.css' />
     <script src='https://unpkg.com/maplibre-gl@5.16.0/dist/maplibre-gl.js'></script>
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
     <style>
         body { margin: 0; padding: 0; }
         html, body, #map { height: 100%; }
@@ -99,15 +100,46 @@
                 filter: ['in', ['get', 'ADM0_A3'], ['literal', Array.from(selectedCountries)]]
             });
             
-            console.log('Selected features for outline:', features.length);
+            console.log('Selected features for outline (raw fragments):', features.length);
             
-            map.getSource('selected-countries').setData({
-                type: 'FeatureCollection',
-                features: features.map(f => ({
+            // Group tile fragments by country code, then union each group into
+            // one polygon so internal tile-boundary seams don't get outlined.
+            const byCountry = {};
+            features.forEach(f => {
+                const code = f.properties.ADM0_A3;
+                if (!byCountry[code]) byCountry[code] = [];
+                byCountry[code].push({
                     type: 'Feature',
                     geometry: f.geometry,
                     properties: f.properties
-                }))
+                });
+            });
+            
+            const mergedFeatures = [];
+            Object.keys(byCountry).forEach(code => {
+                const parts = byCountry[code];
+                if (parts.length === 1) {
+                    mergedFeatures.push(parts[0]);
+                    return;
+                }
+                try {
+                    let merged = parts[0];
+                    for (let i = 1; i < parts.length; i++) {
+                        merged = turf.union(merged, parts[i]);
+                    }
+                    merged.properties = parts[0].properties;
+                    mergedFeatures.push(merged);
+                } catch (err) {
+                    console.warn('Turf union failed for', code, '- falling back to raw fragments', err);
+                    parts.forEach(p => mergedFeatures.push(p));
+                }
+            });
+            
+            console.log('Merged features for outline:', mergedFeatures.length);
+            
+            map.getSource('selected-countries').setData({
+                type: 'FeatureCollection',
+                features: mergedFeatures
             });
         }
         
