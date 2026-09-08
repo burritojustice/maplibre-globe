@@ -114,6 +114,32 @@
         let showActive = false;
         let selectedCountries = new Set();
         
+        // ─── Crimea handling ─────────────────────────────────────────────────
+        // In this basemap's data, Crimea is a separate polygon fragment tagged
+        // with ADM0_A3 = 'RUS' (same as mainland Russia), so it can't be told
+        // apart from Russia by country code alone. We detect it heuristically
+        // by scanning common Natural-Earth-style name fields for "Crimea", then
+        // build an exact-match expression from whichever field actually matched
+        // so hide/show filters and outline queries can treat it as Ukrainian.
+        let crimeaMatchKey = null;
+        let crimeaMatchValue = null;
+        
+        function findCrimeaMatch(properties) {
+            const candidates = ['NAME', 'NAME_LONG', 'GEOUNIT', 'SUBUNIT', 'BRK_NAME', 'FORMAL_EN', 'ADMIN', 'SOVEREIGNT'];
+            for (const key of candidates) {
+                const val = properties[key];
+                if (typeof val === 'string' && val.toLowerCase().includes('crimea')) {
+                    return { key, value: val };
+                }
+            }
+            return null;
+        }
+        
+        function crimeaFilterExpr() {
+            if (!crimeaMatchKey) return null;
+            return ['==', ['get', crimeaMatchKey], crimeaMatchValue];
+        }
+        
         // Add a layer for selected country outlines
         map.addSource('selected-countries', {
             type: 'geojson',
@@ -152,18 +178,28 @@
                 return;
             }
             
+            const codesArr = Array.from(selectedCountries);
+            const includeCrimea = crimeaMatchKey && selectedCountries.has('UKR');
+            
+            const queryFilter = includeCrimea
+                ? ['any', ['in', ['get', 'ADM0_A3'], ['literal', codesArr]], crimeaFilterExpr()]
+                : ['in', ['get', 'ADM0_A3'], ['literal', codesArr]];
+            
             const features = map.querySourceFeatures('maplibre', {
                 sourceLayer: 'countries',
-                filter: ['in', ['get', 'ADM0_A3'], ['literal', Array.from(selectedCountries)]]
+                filter: queryFilter
             });
             
             console.log('Selected features for outline (raw fragments):', features.length);
             
             // Group tile fragments by country code, then union each group into
             // one polygon so internal tile-boundary seams don't get outlined.
+            // Crimea fragments always group under Ukraine, regardless of their
+            // raw ADM0_A3 value, so they merge with mainland Ukraine's outline.
             const byCountry = {};
             features.forEach(f => {
-                const code = f.properties.ADM0_A3;
+                const isCrimea = crimeaMatchKey && findCrimeaMatch(f.properties);
+                const code = isCrimea ? 'UKR' : f.properties.ADM0_A3;
                 if (!byCountry[code]) byCountry[code] = [];
                 byCountry[code].push({
                     type: 'Feature',
@@ -203,7 +239,15 @@
         // Function to hide specific countries
         function hideCountries(countryList) {
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
-            const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countryList]]]];
+            const notInList = ['!', ['in', ['get', 'ADM0_A3'], ['literal', countryList]]];
+            const hidingUkraine = countryList.includes('UKR');
+            
+            // If Crimea is being hidden, only because Ukraine is hidden (rule:
+            // hiding Ukraine hides Crimea). Otherwise Crimea always stays
+            // visible, even if Russia is hidden.
+            const filter = crimeaMatchKey
+                ? ['all', ['case', crimeaFilterExpr(), !hidingUkraine, notInList]]
+                : ['all', notInList];
             
             layersToFilter.forEach(layerId => {
                 map.setFilter(layerId, filter);
@@ -220,7 +264,14 @@
         // Function to show only specific countries
         function showOnlyCountries(countryList) {
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
-            const filter = ['all', ['in', ['get', 'ADM0_A3'], ['literal', countryList]]];
+            const inList = ['in', ['get', 'ADM0_A3'], ['literal', countryList]];
+            const showingUkraine = countryList.includes('UKR');
+            
+            // Crimea only appears if Ukraine is in the show list (rule: showing
+            // only Russia hides Crimea; showing Ukraine shows Crimea).
+            const filter = crimeaMatchKey
+                ? ['all', ['case', crimeaFilterExpr(), showingUkraine, inList]]
+                : ['all', inList];
             
             layersToFilter.forEach(layerId => {
                 map.setFilter(layerId, filter);
@@ -350,9 +401,21 @@
                     codeToAbbrev[code] = abbrev;
                     abbrevToCode[abbrev] = code;
                 }
+                
+                if (!crimeaMatchKey) {
+                    const match = findCrimeaMatch(feature.properties);
+                    if (match) {
+                        crimeaMatchKey = match.key;
+                        crimeaMatchValue = match.value;
+                        console.log('Crimea detected via property', match.key, '=', match.value);
+                    }
+                }
             });
             
             console.log('Code to abbrev mapping:', codeToAbbrev);
+            if (!crimeaMatchKey) {
+                console.warn('Crimea feature not detected — check candidate property names in findCrimeaMatch()');
+            }
             
             // Auto-apply if only one parameter
             if (hasOnlyHide) {
@@ -377,7 +440,9 @@
         map.on('click', 'countries-fill', (e) => {
             if (hideActive || showActive) return; // Don't allow selection when filters are active
             
-            const countryCode = e.features[0].properties.ADM0_A3;
+            const feature = e.features[0];
+            const isCrimea = crimeaMatchKey && findCrimeaMatch(feature.properties);
+            const countryCode = isCrimea ? 'UKR' : feature.properties.ADM0_A3;
             
             if (selectedCountries.has(countryCode)) {
                 selectedCountries.delete(countryCode);
