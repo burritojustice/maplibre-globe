@@ -119,6 +119,7 @@
         let selectedCountries = new Set();
         let crimeaGeometry = null; // precise Crimea shape, for click hit-testing
         let crimeaMaskGeometry = null; // buffered (slightly larger) version, for masking/carve-outs
+        let crimeaVisibleState = false; // tracks whether crimea-fill is currently meant to be shown
         
         // Add a layer for selected country outlines
         map.addSource('selected-countries', {
@@ -187,11 +188,10 @@
                 'line-color': oceanColor,
                 'line-width': {
                     'stops': [
-                        [1, 3],
-                        [4, 5],
-                        [6, 6],
-                        [14, 10],
-                        [22, 16]
+                        [1, 1],
+                        [6, 2],
+                        [14, 6],
+                        [22, 12]
                     ]
                 }
             },
@@ -257,6 +257,7 @@
         // Function to update selected countries outline
         function updateSelectedOutline() {
             updateSmallCountryMarkerStyles();
+            refreshCrimeaWaterOutline();
             
             if (selectedCountries.size === 0) {
                 map.getSource('selected-countries').setData({
@@ -412,16 +413,26 @@
         //  - Crimea always mirrors Ukraine's visibility.
         //  - Whenever Crimea itself is shown, it always gets its own ocean-
         //    colored border (reads as a coastline against whatever's next
-        //    to it, whether that's Russia or open water).
+        //    to it, whether that's Russia or open water) — except while
+        //    Ukraine's own red selection highlight is covering it, so the
+        //    two don't visually compete at the same edge.
         //  - If Crimea is hidden but Russia IS shown, mask the Crimea-shaped
         //    patch (fill + boundary line) that's still part of Russia's own
         //    polygon in this data.
         function updateCrimeaTreatment(ukraineVisible, russiaVisible) {
-            const crimeaVisible = ukraineVisible;
+            crimeaVisibleState = ukraineVisible;
             
-            setCrimeaVisible(crimeaVisible);
-            setCrimeaWaterOutlineVisible(crimeaVisible);
-            setCrimeaMaskVisible(!crimeaVisible && russiaVisible);
+            setCrimeaVisible(crimeaVisibleState);
+            refreshCrimeaWaterOutline();
+            setCrimeaMaskVisible(!crimeaVisibleState && russiaVisible);
+        }
+        
+        // Re-derives the water outline's visibility from current state:
+        // shown whenever Crimea itself is visible, unless Ukraine's red
+        // selection highlight is currently active (no filter running).
+        function refreshCrimeaWaterOutline() {
+            const highlighted = selectedCountries.has('UKR') && !hideActive && !showActive;
+            setCrimeaWaterOutlineVisible(crimeaVisibleState && !highlighted);
         }
         
         // ─── Small country marker functions ─────────────────────────────────
