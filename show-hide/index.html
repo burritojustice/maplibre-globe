@@ -108,44 +108,11 @@
         // Only show labels at zoom 4 and above
         map.setLayerZoomRange('countries-label', 3, 24);
         
-        // Debug: dump every layer in the style so we can spot any layer
-        // (e.g. a distinct disputed-territory layer for Crimea) that our
-        // hide/show filters aren't currently touching.
-        console.log('[debug] all style layers:\n' + map.getStyle().layers.map(l =>
-            `${l.id} | type=${l.type} | source=${l.source} | sourceLayer=${l['source-layer'] || ''}`
-        ).join('\n'));
-        
         let codeToAbbrev = {};
         let abbrevToCode = {};
         let hideActive = false;
         let showActive = false;
         let selectedCountries = new Set();
-        
-        // ─── Crimea handling ─────────────────────────────────────────────────
-        // In this basemap's data, Crimea is a separate polygon fragment tagged
-        // with ADM0_A3 = 'RUS' (same as mainland Russia), so it can't be told
-        // apart from Russia by country code alone. We detect it heuristically
-        // by scanning common Natural-Earth-style name fields for "Crimea", then
-        // build an exact-match expression from whichever field actually matched
-        // so hide/show filters and outline queries can treat it as Ukrainian.
-        let crimeaMatchKey = null;
-        let crimeaMatchValue = null;
-        
-        function findCrimeaMatch(properties) {
-            const candidates = ['NAME', 'NAME_LONG', 'GEOUNIT', 'SUBUNIT', 'BRK_NAME', 'FORMAL_EN', 'ADMIN', 'SOVEREIGNT'];
-            for (const key of candidates) {
-                const val = properties[key];
-                if (typeof val === 'string' && val.toLowerCase().includes('crimea')) {
-                    return { key, value: val };
-                }
-            }
-            return null;
-        }
-        
-        function crimeaFilterExpr() {
-            if (!crimeaMatchKey) return null;
-            return ['==', ['get', crimeaMatchKey], crimeaMatchValue];
-        }
         
         // Add a layer for selected country outlines
         map.addSource('selected-countries', {
@@ -185,28 +152,18 @@
                 return;
             }
             
-            const codesArr = Array.from(selectedCountries);
-            const includeCrimea = crimeaMatchKey && selectedCountries.has('UKR');
-            
-            const queryFilter = includeCrimea
-                ? ['any', ['in', ['get', 'ADM0_A3'], ['literal', codesArr]], crimeaFilterExpr()]
-                : ['in', ['get', 'ADM0_A3'], ['literal', codesArr]];
-            
             const features = map.querySourceFeatures('maplibre', {
                 sourceLayer: 'countries',
-                filter: queryFilter
+                filter: ['in', ['get', 'ADM0_A3'], ['literal', Array.from(selectedCountries)]]
             });
             
             console.log('Selected features for outline (raw fragments):', features.length);
             
             // Group tile fragments by country code, then union each group into
             // one polygon so internal tile-boundary seams don't get outlined.
-            // Crimea fragments always group under Ukraine, regardless of their
-            // raw ADM0_A3 value, so they merge with mainland Ukraine's outline.
             const byCountry = {};
             features.forEach(f => {
-                const isCrimea = crimeaMatchKey && findCrimeaMatch(f.properties);
-                const code = isCrimea ? 'UKR' : f.properties.ADM0_A3;
+                const code = f.properties.ADM0_A3;
                 if (!byCountry[code]) byCountry[code] = [];
                 byCountry[code].push({
                     type: 'Feature',
@@ -214,6 +171,24 @@
                     properties: f.properties
                 });
             });
+            
+            // Crimea lives in its own separate source/layer (crimea-fill), not
+            // in the 'countries' source, so it never shows up in the query
+            // above. When Ukraine is selected, pull it in and merge it into
+            // Ukraine's outline group.
+            if (selectedCountries.has('UKR') && map.getSource('crimea')) {
+                const crimeaFeatures = map.querySourceFeatures('crimea');
+                if (crimeaFeatures.length > 0) {
+                    if (!byCountry['UKR']) byCountry['UKR'] = [];
+                    crimeaFeatures.forEach(f => {
+                        byCountry['UKR'].push({
+                            type: 'Feature',
+                            geometry: f.geometry,
+                            properties: f.properties
+                        });
+                    });
+                }
+            }
             
             const mergedFeatures = [];
             Object.keys(byCountry).forEach(code => {
@@ -246,15 +221,7 @@
         // Function to hide specific countries
         function hideCountries(countryList) {
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
-            const notInList = ['!', ['in', ['get', 'ADM0_A3'], ['literal', countryList]]];
-            const hidingUkraine = countryList.includes('UKR');
-            
-            // If Crimea is being hidden, only because Ukraine is hidden (rule:
-            // hiding Ukraine hides Crimea). Otherwise Crimea always stays
-            // visible, even if Russia is hidden.
-            const filter = crimeaMatchKey
-                ? ['all', ['case', crimeaFilterExpr(), !hidingUkraine, notInList]]
-                : ['all', notInList];
+            const filter = ['all', ['!', ['in', ['get', 'ADM0_A3'], ['literal', countryList]]]];
             
             layersToFilter.forEach(layerId => {
                 map.setFilter(layerId, filter);
@@ -266,19 +233,16 @@
                 'all',
                 ['!', ['in', ['get', 'ABBREV'], ['literal', abbrevsToHide]]]
             ]);
+            
+            // Crimea (its own separate layer/source) only hides when Ukraine
+            // is hidden — hiding Russia alone always leaves it visible.
+            setCrimeaVisible(!countryList.includes('UKR'));
         }
         
         // Function to show only specific countries
         function showOnlyCountries(countryList) {
             const layersToFilter = ['countries-fill', 'countries-boundary', 'coastline'];
-            const inList = ['in', ['get', 'ADM0_A3'], ['literal', countryList]];
-            const showingUkraine = countryList.includes('UKR');
-            
-            // Crimea only appears if Ukraine is in the show list (rule: showing
-            // only Russia hides Crimea; showing Ukraine shows Crimea).
-            const filter = crimeaMatchKey
-                ? ['all', ['case', crimeaFilterExpr(), showingUkraine, inList]]
-                : ['all', inList];
+            const filter = ['all', ['in', ['get', 'ADM0_A3'], ['literal', countryList]]];
             
             layersToFilter.forEach(layerId => {
                 map.setFilter(layerId, filter);
@@ -290,6 +254,10 @@
                 'all',
                 ['in', ['get', 'ABBREV'], ['literal', abbrevsToShow]]
             ]);
+            
+            // Crimea only shows when Ukraine is in the show list — showing
+            // only Russia hides it.
+            setCrimeaVisible(countryList.includes('UKR'));
         }
         
         // Function to remove filters (show all countries)
@@ -301,6 +269,13 @@
             });
             
             map.setFilter('countries-label', null);
+            setCrimeaVisible(true);
+        }
+        
+        // Toggle the dedicated crimea-fill layer's visibility directly.
+        function setCrimeaVisible(visible) {
+            if (!map.getLayer('crimea-fill')) return;
+            map.setLayoutProperty('crimea-fill', 'visibility', visible ? 'visible' : 'none');
         }
         
         // ─── Small country marker functions ─────────────────────────────────
@@ -408,21 +383,9 @@
                     codeToAbbrev[code] = abbrev;
                     abbrevToCode[abbrev] = code;
                 }
-                
-                if (!crimeaMatchKey) {
-                    const match = findCrimeaMatch(feature.properties);
-                    if (match) {
-                        crimeaMatchKey = match.key;
-                        crimeaMatchValue = match.value;
-                        console.log('Crimea detected via property', match.key, '=', match.value);
-                    }
-                }
             });
             
             console.log('Code to abbrev mapping:', codeToAbbrev);
-            if (!crimeaMatchKey) {
-                console.warn('Crimea feature not detected — check candidate property names in findCrimeaMatch()');
-            }
             
             // Auto-apply if only one parameter
             if (hasOnlyHide) {
@@ -445,17 +408,9 @@
         
         // Handle country clicks for selection (only if no URL params or filters not active)
         map.on('click', 'countries-fill', (e) => {
-            if (hideActive || showActive) {
-                // Debug aid: log what's under the cursor even while a filter is
-                // active, so we can identify stray/independent geometry (like
-                // an unaccounted-for Crimea fragment) that's slipping through.
-                console.log('[debug] click while hide/show active — feature properties:', e.features[0].properties);
-                return; // Don't allow selection when filters are active
-            }
+            if (hideActive || showActive) return; // Don't allow selection when filters are active
             
-            const feature = e.features[0];
-            const isCrimea = crimeaMatchKey && findCrimeaMatch(feature.properties);
-            const countryCode = isCrimea ? 'UKR' : feature.properties.ADM0_A3;
+            const countryCode = e.features[0].properties.ADM0_A3;
             
             if (selectedCountries.has(countryCode)) {
                 selectedCountries.delete(countryCode);
@@ -475,6 +430,31 @@
         });
         
         map.on('mouseleave', 'countries-fill', () => {
+            map.getCanvas().style.cursor = '';
+        });
+        
+        // Clicking Crimea (its own layer/source, independent of Russia and
+        // Ukraine's polygons) always toggles Ukraine's selection.
+        map.on('click', 'crimea-fill', (e) => {
+            if (hideActive || showActive) return;
+            
+            if (selectedCountries.has('UKR')) {
+                selectedCountries.delete('UKR');
+            } else {
+                selectedCountries.add('UKR');
+            }
+            
+            updateSelectedOutline();
+            console.log('Selected countries:', Array.from(selectedCountries));
+        });
+        
+        map.on('mouseenter', 'crimea-fill', () => {
+            if (!hideActive && !showActive) {
+                map.getCanvas().style.cursor = 'pointer';
+            }
+        });
+        
+        map.on('mouseleave', 'crimea-fill', () => {
             map.getCanvas().style.cursor = '';
         });
         
