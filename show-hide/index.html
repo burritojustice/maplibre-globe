@@ -117,7 +117,8 @@
         let hideActive = false;
         let showActive = false;
         let selectedCountries = new Set();
-        let crimeaGeometry = null; // captured once source loads; see idle handler below
+        let crimeaGeometry = null; // precise Crimea shape, for click hit-testing
+        let crimeaMaskGeometry = null; // buffered (slightly larger) version, for masking/carve-outs
         
         // Add a layer for selected country outlines
         map.addSource('selected-countries', {
@@ -206,6 +207,52 @@
             map.setLayoutProperty('crimea-mask-fill', 'visibility', visible ? 'visible' : 'none');
         }
         
+        // Capture Crimea's geometry (unioned into a single polygon if split
+        // across tile fragments) — the precise version for click hit-testing,
+        // and a buffered (slightly larger) version for masking/carve-outs so
+        // they fully cover Russia's boundary line at that seam instead of
+        // leaving a sliver visible from a geometry mismatch between datasets.
+        function captureCrimeaGeometry() {
+            if (crimeaGeometry) return; // already captured
+            
+            const crimeaFragments = map.querySourceFeatures('crimea');
+            if (crimeaFragments.length === 0) return;
+            
+            try {
+                let merged = crimeaFragments[0];
+                for (let i = 1; i < crimeaFragments.length; i++) {
+                    merged = turf.union(merged, crimeaFragments[i]);
+                }
+                crimeaGeometry = merged;
+            } catch (err) {
+                console.warn('Turf union failed for Crimea geometry capture', err);
+                crimeaGeometry = crimeaFragments[0];
+            }
+            
+            try {
+                crimeaMaskGeometry = turf.buffer(crimeaGeometry, 25, { units: 'kilometers' });
+            } catch (err) {
+                console.warn('Turf buffer failed for Crimea mask — using unbuffered geometry', err);
+                crimeaMaskGeometry = crimeaGeometry;
+            }
+            
+            map.getSource('crimea-mask').setData({
+                type: 'FeatureCollection',
+                features: [crimeaMaskGeometry]
+            });
+        }
+        
+        // Capture as early as possible: the small 'crimea' GeoJSON source
+        // loads well before the whole map goes idle (idle waits on the much
+        // larger 'maplibre' vector tile source too), so this avoids a brief
+        // flash of Russia's unmasked claim if Hide/Show gets clicked shortly
+        // after page load.
+        map.on('sourcedata', (e) => {
+            if (e.sourceId === 'crimea' && e.isSourceLoaded) {
+                captureCrimeaGeometry();
+            }
+        });
+        
         // Function to update selected countries outline
         function updateSelectedOutline() {
             updateSmallCountryMarkerStyles();
@@ -278,10 +325,12 @@
                 }
                 
                 // Russia's own polygon in this data includes Crimea's shape.
-                // Carve it out so selecting Russia doesn't also outline Crimea.
-                if (code === 'RUS' && crimeaGeometry) {
+                // Carve it out (using the buffered mask geometry, not the
+                // precise shape, so no thin sliver is left along the seam)
+                // so selecting Russia doesn't also outline Crimea.
+                if (code === 'RUS' && crimeaMaskGeometry) {
                     try {
-                        const diffed = turf.difference(merged, crimeaGeometry);
+                        const diffed = turf.difference(merged, crimeaMaskGeometry);
                         if (diffed) merged = diffed;
                     } catch (err) {
                         console.warn('Turf difference failed removing Crimea from Russia outline', err);
@@ -360,8 +409,9 @@
         // Single source of truth for how Crimea should look given whether
         // Ukraine and Russia are each currently visible:
         //  - Crimea always mirrors Ukraine's visibility.
-        //  - If Crimea is shown but Russia isn't, its border becomes the
-        //    ocean color (reads as a coastline, not a floating white shape).
+        //  - Whenever Crimea itself is shown, it always gets its own ocean-
+        //    colored border (reads as a coastline against whatever's next
+        //    to it, whether that's Russia or open water).
         //  - If Crimea is hidden but Russia IS shown, mask the Crimea-shaped
         //    patch (fill + boundary line) that's still part of Russia's own
         //    polygon in this data.
@@ -369,7 +419,7 @@
             const crimeaVisible = ukraineVisible;
             
             setCrimeaVisible(crimeaVisible);
-            setCrimeaWaterOutlineVisible(crimeaVisible && !russiaVisible);
+            setCrimeaWaterOutlineVisible(crimeaVisible);
             setCrimeaMaskVisible(!crimeaVisible && russiaVisible);
         }
         
@@ -482,41 +532,9 @@
             
             console.log('Code to abbrev mapping:', codeToAbbrev);
             
-            // Capture Crimea's geometry once (unioned into a single polygon
-            // if it's split across tile fragments) so clicks can be tested
-            // against it directly, independent of crimea-fill's current
-            // visibility/render state.
-            const crimeaFragments = map.querySourceFeatures('crimea');
-            if (crimeaFragments.length > 0) {
-                try {
-                    let merged = crimeaFragments[0];
-                    for (let i = 1; i < crimeaFragments.length; i++) {
-                        merged = turf.union(merged, crimeaFragments[i]);
-                    }
-                    crimeaGeometry = merged;
-                } catch (err) {
-                    console.warn('Turf union failed for Crimea geometry capture', err);
-                    crimeaGeometry = crimeaFragments[0];
-                }
-                
-                // Build the mask polygon slightly larger than Crimea's true
-                // shape, so it fully covers Russia's boundary line at that
-                // edge instead of leaving a sliver visible from a geometry
-                // mismatch between the two datasets.
-                try {
-                    const buffered = turf.buffer(crimeaGeometry, 15, { units: 'kilometers' });
-                    map.getSource('crimea-mask').setData({
-                        type: 'FeatureCollection',
-                        features: [buffered]
-                    });
-                } catch (err) {
-                    console.warn('Turf buffer failed for Crimea mask — using unbuffered geometry', err);
-                    map.getSource('crimea-mask').setData({
-                        type: 'FeatureCollection',
-                        features: [crimeaGeometry]
-                    });
-                }
-            }
+            // Fallback in case the early 'sourcedata' capture below didn't
+            // fire for some reason.
+            captureCrimeaGeometry();
             
             // Auto-apply if only one parameter
             if (hasOnlyHide) {
