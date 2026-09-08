@@ -20,8 +20,8 @@
             width: 18px;
             height: 18px;
             border-radius: 50%;
-            background: rgba(255, 255, 255, 0.35);
-            border: 3px solid rgba(0, 0, 0, 0.45);
+            background: rgba(211, 211, 211, 0.5);
+            border: 3px solid rgba(211, 211, 211, 0.5);
             box-sizing: border-box;
             cursor: pointer;
             transition: background 0.15s ease, border-color 0.15s ease;
@@ -140,6 +140,77 @@
             }
         });
         
+        // ─── Crimea water treatment ─────────────────────────────────────────
+        // Crimea sits on its own separate layer/source ('crimea-fill'), not
+        // inside 'countries'. Two extra layers built on that same 'crimea'
+        // source handle the visual side-effects of hiding Russia or Ukraine:
+        //  - crimea-water-outline: traces Crimea's own border in the map's
+        //    ocean color, so it doesn't look like it's floating in a void
+        //    once Russia (its neighboring landmass) disappears.
+        //  - crimea-mask: paints over the Crimea-shaped area in ocean color
+        //    when Ukraine is hidden. Mainland Russia's polygon in this data
+        //    still includes that area, so simply hiding 'crimea-fill' isn't
+        //    enough to make Crimea disappear from the map.
+        const oceanColor = map.getPaintProperty('background', 'background-color') || '#a6cee3';
+        
+        map.addLayer({
+            id: 'crimea-water-outline',
+            type: 'line',
+            source: 'crimea',
+            paint: {
+                'line-color': oceanColor,
+                'line-width': {
+                    'stops': [
+                        [1, 1],
+                        [6, 2],
+                        [14, 6],
+                        [22, 12]
+                    ]
+                }
+            },
+            layout: { visibility: 'none' }
+        });
+        
+        map.addLayer({
+            id: 'crimea-mask-fill',
+            type: 'fill',
+            source: 'crimea',
+            paint: {
+                'fill-color': oceanColor
+            },
+            layout: { visibility: 'none' }
+        });
+        
+        map.addLayer({
+            id: 'crimea-mask-outline',
+            type: 'line',
+            source: 'crimea',
+            paint: {
+                'line-color': oceanColor,
+                'line-width': {
+                    'stops': [
+                        [1, 1],
+                        [6, 2],
+                        [14, 6],
+                        [22, 12]
+                    ]
+                }
+            },
+            layout: { visibility: 'none' }
+        });
+        
+        function setCrimeaWaterOutlineVisible(visible) {
+            if (!map.getLayer('crimea-water-outline')) return;
+            map.setLayoutProperty('crimea-water-outline', 'visibility', visible ? 'visible' : 'none');
+        }
+        
+        function setCrimeaMaskVisible(visible) {
+            if (!map.getLayer('crimea-mask-fill')) return;
+            const vis = visible ? 'visible' : 'none';
+            map.setLayoutProperty('crimea-mask-fill', 'visibility', vis);
+            map.setLayoutProperty('crimea-mask-outline', 'visibility', vis);
+        }
+        
         // Function to update selected countries outline
         function updateSelectedOutline() {
             updateSmallCountryMarkerStyles();
@@ -236,7 +307,13 @@
             
             // Crimea (its own separate layer/source) only hides when Ukraine
             // is hidden — hiding Russia alone always leaves it visible.
-            setCrimeaVisible(!countryList.includes('UKR'));
+            const ukraineHidden = countryList.includes('UKR');
+            const russiaHidden = countryList.includes('RUS');
+            const crimeaVisible = !ukraineHidden;
+            
+            setCrimeaVisible(crimeaVisible);
+            setCrimeaMaskVisible(ukraineHidden);
+            setCrimeaWaterOutlineVisible(crimeaVisible && russiaHidden);
         }
         
         // Function to show only specific countries
@@ -257,7 +334,13 @@
             
             // Crimea only shows when Ukraine is in the show list — showing
             // only Russia hides it.
-            setCrimeaVisible(countryList.includes('UKR'));
+            const ukraineShown = countryList.includes('UKR');
+            const russiaShown = countryList.includes('RUS');
+            const crimeaVisible = ukraineShown;
+            
+            setCrimeaVisible(crimeaVisible);
+            setCrimeaMaskVisible(!ukraineShown);
+            setCrimeaWaterOutlineVisible(crimeaVisible && !russiaShown);
         }
         
         // Function to remove filters (show all countries)
@@ -270,6 +353,8 @@
             
             map.setFilter('countries-label', null);
             setCrimeaVisible(true);
+            setCrimeaMaskVisible(false);
+            setCrimeaWaterOutlineVisible(false);
         }
         
         // Toggle the dedicated crimea-fill layer's visibility directly.
