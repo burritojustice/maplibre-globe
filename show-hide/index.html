@@ -187,10 +187,11 @@
                 'line-color': oceanColor,
                 'line-width': {
                     'stops': [
-                        [1, 1],
-                        [6, 2],
-                        [14, 6],
-                        [22, 12]
+                        [1, 3],
+                        [4, 5],
+                        [6, 6],
+                        [14, 10],
+                        [22, 16]
                     ]
                 }
             },
@@ -418,24 +419,9 @@
         function updateCrimeaTreatment(ukraineVisible, russiaVisible) {
             const crimeaVisible = ukraineVisible;
             
-            console.log('[debug] updateCrimeaTreatment', {
-                ukraineVisible,
-                russiaVisible,
-                crimeaVisible,
-                waterOutlineShouldShow: crimeaVisible,
-                maskShouldShow: !crimeaVisible && russiaVisible,
-                crimeaWaterOutlineLayerExists: !!map.getLayer('crimea-water-outline'),
-                crimeaWaterOutlineCurrentVisibility: map.getLayer('crimea-water-outline')
-                    ? map.getLayoutProperty('crimea-water-outline', 'visibility')
-                    : null
-            });
-            
             setCrimeaVisible(crimeaVisible);
             setCrimeaWaterOutlineVisible(crimeaVisible);
             setCrimeaMaskVisible(!crimeaVisible && russiaVisible);
-            
-            console.log('[debug] crimea-water-outline visibility after update:',
-                map.getLayoutProperty('crimea-water-outline', 'visibility'));
         }
         
         // ─── Small country marker functions ─────────────────────────────────
